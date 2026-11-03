@@ -1,6 +1,44 @@
 # DEV_NOTES — telegram_bot
 
-Latest: Checkpoint 7 — 01 Nov 2026.
+Latest: Checkpoint 9 — 04 Nov 2026.
+
+## Checkpoint 9 — 04 Nov 2026 (Just_arobot: Malay + kinds + flow discipline)
+
+Headspace: same short-burst loop, heavier Plan-mode use (user now says "discuss" or "dont edit" to force it). Screenshots as bug reports continued (typo'd commands, double Queued stamps, claim spin, dead-button leftover). Live-verify + `run`-smoke adopted after a silent-/start incident. Terse replies held.
+
+What shipped (ALL UNCOMMITTED — `?? bot/Just_arobot/`, `?? package-lock.json`, origin still `3d623b9`; webhook in sync, 0 pending): safety trio (contact auto-mask, 5/hr+20/day text limits, drip-feed → parked OFF as hand-approval paces enough) with `MASK_CONTACTS/TEXT_LIMITS/DRIP_FEED` kill switches; text rate limits; role-aware `/help` + `/synccommands` autocomplete scopes (+`/list`, `/changelanguage`, `/dbstatus`, `/unbutton` later); `/mystats`; rich `/start` (Malay 5-section from owner's screenshots, personalized greeting, 2×3 grid, first-run BM/EN picker, `/changelanguage`, `sendMenu` on Cancel/Confirm-ack); `lib/strings.js` dict (128 keys ms+en, parity-checked, per-user `L(row)` threading; admin side + ban/warn voice stay English); question/lost/found kinds (`kind` + `kind_seq` unique, `#ask1/#lost1/#found1`, kind cards/tags, arm intents, `/cancel*`); claim flow built then CUT as overcomplicated (manual brokering; `claims` table retired unused; `/unbutton` strips the dead #C78 button); intent nudge (heuristics + always-on convert row + `convert_` owner-only kind flip); preview split (buttonless content + labeled action, `preview_msg_id`) then content/action inversion; interactive hygiene (previews/arms die on completion); flow discipline (session lock, arm switching, honest cancels, `chatOpenFor`); abuse control (3/min burst at staging, 10/min taps via `hits`, owner+admin bypass, slow-mode removed); A-id-only group revert (raw id DM-only) + `/who #C` + paged `/list` (status sections, 30/page, stateless cursor); opener markers mapped into `chatMap` (reply-to-opener routes; unlinked replies get guidance); 👎-on-Reject; green/red preview buttons + divider + centered-table hint (rich-first, plain fallbacks); `/dbstatus`; `stress_test.md`. Migrated clean throughout: `users.lang`, `submissions.{kind,kind_seq,is_question,preview_msg_id}`, `claims`, `hits`, `uidx_sub_kind_seq`.
+
+Bugs + lessons:
+17. Missing import (`TEXT_HOURLY_LIMIT`) killed `/start` with total silence — `node --check` can't catch it. New ritual: after pushes touching new identifiers, server-smoke via `npx tgcloud run handlers/message` with a synthetic payload (single-quote JSON5 — PowerShell strips inner double quotes).
+18. `run` with fake ids: `chat not found` = handler ran fine; fake callback ids die at `answerCallbackQuery` AFTER new code executes — both are valid verification signals, not failures.
+19. Callback TDZ: `cid` declared post-admin-gate; pre-gate blocks (claim) must use `Number()` — audit declaration order when adding early blocks.
+20. Raw `db.all/get(sql...)` rows are snake_case (`src_msg_id`); builder rows are camelCase. Never mix assumptions.
+21. `edit` with identical old/new is a no-op error (not silent); multi-match needs `replaceAll:true`; after any whole-block rewrite, re-read the region (two clobbers this session: `whoOf` deletion, `sendStart` opener) — verify structure, don't assume.
+22. Shell python one-liners mangle backslash-heavy JS (a whole line got corrupted) — prefer `edit`, reserve shell for reads/counts. PowerShell has no heredoc, no `head`.
+23. Typo'd slash commands die silently in group (`/snyccommands` vs `/synccommands`) — autocomplete (now synced) is the prevention.
+24. Anonymous-admin sends arrive as GroupAnonymousBot (1087968824) → not admin → silence. Tell the user to send as themselves.
+25. Removing a button handler orphans live keyboards (taps spin) — ship the strip path (`/unbutton`) with the removal.
+26. Rich `editMessageReplyMarkup` left unverified — sidestepped by the preview split (markup edits only touch plain action messages) instead of tested. Debt if rich actions ever need edits.
+
+Open threads: FAQ content (owner's soalan/jawapan); 5 parked rule-link URLs; ack copy corrections (owner to supply verbatim); live promotion (needs live token pasted here — BotFather transfer doesn't exist); ban/warn Malay voice; mass announcement; dupe guard + `/delete`; arm TTL (15 min) + two-way convert-back (both spec'd, unbuilt); stray root `package-lock.json`; commit pending explicit ask. Test debt: EN-locale paths lightly covered (owner tests BM-first); media-rich preview shapes unconfirmed (fallbacks hold).
+
+## Checkpoint 8 — 02 Nov 2026 (Just_arobot confession queue, live rev 41)
+
+Headspace: marathon builder session with Plan-mode interludes. User drove in short bursts ("ok go"), pasted getUpdates JSON + channel screenshots as bug reports, decided scope via quick questions. Live-verify-everything held all day: every push followed by user-run live tests. Keep replies terse, verify with shell, never git-commit unless asked. Plan mode flipped on/off 3× — when active, discuss only, plans go to `C:\Users\darkv\.opencode\plan`.
+
+What shipped (ALL UNCOMMITTED — `?? bot/Just_arobot/`, `?? package-lock.json`, origin still `3d623b9`): full confession-to-channel bot on `@Just_arobot`, linked `app1232472975`, local rev 41, webhook in sync (`message, callback_query, message_reaction`, 0 pending). Arc: topic-per-user stub → single-queue `#C` inbox in General → timed bans (3d/7d/14d/30d/forever+custom) with duration→reason→confirm pickers → warn tiers from channel terms (flood/other→ringan warn→7d→forever; spam/abuse→sederhana warn+20d→forever; nsfw/scam→berat instant forever) → 60d rolling window (audit-derived) → appeals (`/appeal`, berat auto-rejected) → swipe-reply relay + threaded channel replies + forward disambiguation (Reply two-step/Report) → bidirectional reaction relay (bot-mirrored) → A-id cutover (`A0001…`, display `<tgId>-<A-id>`) → confirm-before-send (unconfirmed staging + preview) → edit flow (`/edit` → ✏️ card → in-place channel edit) → user-admin chat sessions (shared Topic 2 id 387, slow-mode 2min, 30min idle, cap 5, `/startchat` admin-initiated) → spoiler A-id tags on channel posts → Reject button → `see the post` hyperlinks (URL form auto-resolved). Schema (all migrated clean): users(+alias/anum/banned_until/warn_light/warn_medium), submissions(+ref/user_msg/topic/card/channel_ids), parts, appeals, pending_intents(+state), reply_map, sessions, chat_map, edits (+ legacy tickets/messages/topic_map). Docs: `bot/Just_arobot/plan.md §10` todo ladder, `bot/Just_arobot/feature.md`, `.opencode/plan/just_arobot-{confession-v1,batch2,promote,future}.md` (outside repo).
+
+Bugs + lessons:
+9. General topic (id 1) rejects `message_thread_id` (`400 message thread not found`) — omit the param for General (`inboxThread`/`threadOrInbox`/`chatThread` helpers). Never assume thread 1 is valid.
+10. Builder `Date`-object WHERE params don't match unix-seconds timestamp columns (limit never tripped) — use raw SQL on `unixepoch()` (`mediaAllowed`, `warnCounts`). Never trust mode conversion in WHERE.
+11. SQLite ALTER can't add UNIQUE columns — add plain column, then a separate unique index (`aliasIdx`, `anumsIdx` pattern).
+12. Albums arrive as N separate webhook hits; lazy-flush needs a later hit to fire — retired albums entirely (1 photo/message + 1 media/day cap) instead of fighting serverless timing.
+13. Cross-chat "Reply in…" arrives as `external_reply`, not `reply_to_message` — parse both.
+14. Spoiler entity offset must skip the `\n\n` separator (off-by-two left `01` exposed while `A00` dotted). Compute offsets in code, verify visually.
+15. PowerShell has no `head` — use `Select-Object -First` or plain output.
+16. `edit` oldString spanning duplicated blocks confuses the matcher ("already in file") — anchor with unique surrounding context; prefer small sequential edits over whole-block rewrites.
+
+Open threads: FAQ menu (needs soalan/jawapan content); live promotion to `@unijaconfession_chatbot` (blocked on account serverless access); exempt-list additions (paste ids); warn window parked at 60d lifetime-fallback; promote cron belongs to other bot, paid-messages future; show-my-profile KIV; stray root `package-lock.json` (91B, from wrong-cwd `npm install` — delete or ignore); `?? bot/Just_arobot/` commit pending explicit ask. Test debt: none open — last full pass green (confirm/A-id/edit + replies + chat sessions).
 
 ## Checkpoint 1 — 01 Nov 2026 (ask_the_robot live + shared rich docs)
 
