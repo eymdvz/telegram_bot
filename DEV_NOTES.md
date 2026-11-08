@@ -1,6 +1,59 @@
 # DEV_NOTES — telegram_bot
 
-Latest: Checkpoint 9 — 04 Nov 2026.
+Latest: Checkpoint 11 — 08 Nov 2026.
+
+## Checkpoint 11 — 08 Nov 2026 (filters → polls → live promotion)
+
+Headspace: marathon verification-driven loop, user testing live on-device between pushes (screenshots as bug reports: fallback ack, faqNudge-on-gibberish, reply-guide demo, dead Inbox). Plan mode toggled 4× (filters, reply-ack fit, delete flow, disable-wiring) — "explain like im5" for the parked four worked well. Terse held. Two folders now: `bot/@Just_arobot` (test bed) + `bot/@unijaconfession_chatbot` (live copy, diverged: live ids + co-owner only).
+
+What shipped (ALL UNCOMMITTED — origin still `96857a0`; `bot/Just_arobot/` delete + `bot/@*/` untracked): V1.4.0 reject reasons + `/msg` + ⚠️-on-warn; ack outage saga (fallback fired → `tag()` exonerated by probe → E1/E2 diag → **shadow**: local `const tag` hid the helper → `cardTag` rename → user-confirmed green); V1.5.0 auto-filters (`isLowQuality` hard block uncounted, `censorProfanity` verbatim-4 + first-last fallback, `kesat` card flag, `LOWQ_BLOCK`/`PROFANITY_MASK`); curse staging notice; V1.5.1 direct-reply intercept (`replyDirect`); V1.5.2 short guides (`ackMsgId`, reply-to-ack/preview one-liners); gibberish-vs-FAQ probe (`detectIntent` null — gate state, not classification); V1.6.0 native polls (`poll_data`, `pollRender`/`pollCensor`, `sendPoll` anonymous-enforced, quiz ✓ on card, `/edit` refused, user-confirmed live post); pollNote + tutorial-poll copy; EN-locale translation pass (rej*/lowQ/curse; `tpl*` stay verbatim); V1.7.0 single live draft (`superseded`, bubbles deleted, burst/text ignore it) + fixed polls-bypass-limits bug; V1.7.1 reply-first refusals (shared `replyGuide`); V1.7.2 discussion wiring (built, tested, then **disabled** to 0 per owner — group replies stay plain chatter); V1.8.0 `/delete` flow (`deletes` table, Apply/Dismiss, `approved-undone`, user-confirmed); V1.8.1 group-safe tutorial (`dismiss`/`tut:` bypass DM lock). LIVE: `bot/@unijaconfession_chatbot` folder copy, token via `TGCLOUD_TOKEN` (login needs TTY), full push (11 modules) + fresh migrate (23 tables) + webhook in sync; live ids (channel `-1001779734656`, group `-1003996987649` after stale basic-id `chat not found`); co-owner `7154716451` full parity (`SUPER_IDS`/`isSuper`, 👑 stays owner). Migrated: `submissions.{ack_msg_id,poll_data}`, `deletes`. Parity 217/217.
+
+Bugs + lessons:
+50. Cloud flakes hit compiles too — identical-content push failed then passed byte-identical. Always retry once before bisecting; flake-check is step zero.
+51. The edit tool consumes its anchor: using a line as oldString to "prepend before it" deletes it. Never anchor-insert on the target line itself — anchor on the following line or re-add it (burned 4× this session: moderation comment, `verdictDM` sig, `editMasked` dup, `postChatMessage` head).
+52. Helper-vs-local name collision (`const tag` card label shadowed imported `tag()`) survives probes and reads — grep every new helper name against locals in scope before first use.
+53. New media kinds must join every enumeration: polls bypassed text limits (`media_kind='text'` filter) until patched. Arm-switch lists, cancels, guards, imports — same rule as ever.
+54. `TGCLOUD_TOKEN` env per-command works when `login` demands a TTY; fresh folder = full first push, no snapshot needed.
+55. Basic→supergroup upgrade kills the old id (`chat not found`); a topic id on a basic-looking id is the tell. Forward from the group to @userinfobot for the live id.
+56. DM-locked button families break group-posted surfaces (`/tutorial` close → "Bukan untuk anda") — carve stateless callbacks (`dismiss`, static pagers) out of the lock.
+57. Gate-state vs classification: gibberish got `faqNudge` from a pre-armed `awaiting_faq`, not from `detectIntent` (probed null on all three). Probe the classifier before "fixing" detection.
+58. Discussion wiring anonymity boundary: group replies stay public under the author's name — only channel re-posts are anonymous. Say it before building, not after.
+
+Open threads: COMMIT (still everything since `96857a0`, rename + 2 folders — needs explicit ask); live guide URLs still point at test-channel posts (FAQ 66437, reply 46470, reject list, terms); live Topic-2 `11009` unverified (chat sessions untested on live); parked: per-category hashtag serials (dropped for now), minta-link phrases, announce batching; `feature.md` stale at V1.4.0 (refresh debt); test/live drift discipline (live-only: ids, co-owner). Test debt: EN paths translated but live-tested BM-first; poll quiz + `/delete` dismiss paths user-verified apply-only.
+
+## Checkpoint 10 — 05 Nov 2026 (soft gates + crown + teaser)
+
+Headspace: user drove via question-tool picks ("what next" → options → Tutorial links → Group-link refuse → crown), screenshots as bug reports (admin-rights panel, @just_arobot profile, /crown announcements with raw errors). Typo-hunt on the old bot name (`@unijacofession_chatbot`) turned into a posted new-bot teaser (I reviewed copy: caught truncated bullet, "Adming", "usefull"). Terse replies held; webfetch used once to settle a platform dispute with docs.
+
+What shipped (ALL UNCOMMITTED — origin still `96857a0`; webhook in sync +`edited_message`, 0 pending; `V 1.0.5` → `V 1.0.11`): categorized ask (L1 8 cats + Servis/Tempat/Bas L2, MAP/BUS_URL self-serves, guided prompts, `ask_cat`/`ask_sub` on card + `#ask` lead + edits, back-to-categories everywhere after a guard bug briefly showed "hantar soalan anda"); reply-prefix soft gate (`rpl_cleared`; colon-or-dash line-start, clear-or-cancel notice, preview kept on blocked Confirm, Batal reuses `cancelconf`); tutorial step 3 links (46470 + 46990, both locales); group-link soft gate (`grp_cleared` default 1; raw-text detect pre-mask, flag-only Confirm, edits re-hold-never-release, own-channel excluded, `grpclear_`); monthly crown (`/crown` owner-only silent; 30d most-actions + fastest-median ≥5, double-win → overall; title saga → bot-side honor with `crowns` table + 👑/⚡ markers in `/adminstats` all windows); `feature.md` full refresh to V 1.0.11. Migrated clean: `submissions.{ask_cat,ask_sub,rpl_cleared,grp_cleared}`, `crowns`.
+
+Bugs + lessons:
+37. Owner must be excluded from leaderboards (title set on group owner fails; owner already 👑) — `crownLeaders(ownerId)` skips SUPER_ADMIN_ID.
+38. `setChatAdministratorCustomTitle` only works for bot-promoted admins (docs-verified: "promoted by the bot"); `setChatMemberTag` is regular-members-only + no emoji. Owner-promoted admins are untouchable → bot-side honors (announce + stats markers), no title code.
+39. Never auto-release a hold on edit (stale buttoned notices outlive the flag; Batal would discard a clean submission) — group-link edits re-hold only, one clear tap after link-out.
+40. Group-link Confirm is flag-only (masking destroys URLs) — staging + edits own detection; reply-prefix re-detects (markers survive masking).
+41. `return { sub, error: null };` appears twice in message.js (staging + confirm) — anchor gate edits with surrounding context.
+42. A wrong-edit attempt is cheap if caught immediately (abandon + redo the right one in the next call); never stack edits on a mistaken base.
+
+Open threads: live promotion (token still needed; teaser live, users on old bot); minta-link + ad-keyword nudge (need owner's BM phrasing lists — asked, paused); `/faqsync` (Sheet seeded 27 rows, unbuilt); announce batching at scale; ban/warn Malay voice; commit pending explicit ask. Test debt: EN-locale paths light; /crown title path deleted (nothing to test); media-rich previews live-tested BM-first.
+
+### Addendum — V 1.0.12/1.0.13 (maintenance + midnight)
+
+Maintenance (`/maintenance [on|off]`, `meta` switch, EXEMPT bypass) and midnight (`midnightActive` + `/midnight [on|off|auto]`, 🌙 on preview + ack) shipped with the `meta` table; tutorial step 3 carries the maintenance/midnight line; `feature.md` refreshed to V 1.0.13; strings at 162 keys parity. Lesson 43: never gut a table in a "small" edit — one wrong-oldString emptied `crowns` and needed a restore (caught by immediate re-read).
+
+### Addendum 2 — V 1.0.14→1.0.24 (nudge → feedback → everywhere)
+
+Ad-nudge (word lists + price+goods, preview-only; copy tuned to student sellers, `usefull`/`Adming`-class typos caught pre-push); threaded verdicts (`verdictDM`, appeals plain for lack of link); contacts unmasked (usernames+phones, `MASK_MENTIONS`/`MASK_PHONES`); iklan/event/dana grid module (dana L2 program/kilat, `#dermakilat` split after a "still shows #cariandana" screenshot, back-buttons); suggest/info bare-tag kinds (+nudge-skip); main-menu relayout (5→6 rows, centered header cell, split `/start` bubbles, `§§` section dividers); cancel→menu everywhere; public post numbers (message-id footer, second-pass stamp); feedback module (`feedback` table, `#F` cards); chat-commands-everywhere (the `/startchat` saga: reply-context trap → A-id fallthrough → card resolution → shared cmds + slash firewall + close button + opener instructions).
+
+Bugs + lessons:
+44. `replaceAll:true` across locales contaminates (EN text landed in ms block; duplicate keys resolve last-wins so it "worked" — caught by grep, not by tests). Never replaceAll across locale blocks; anchor with neighbors.
+45. Single-line edits that "succeed" can still clobber (dropped `return`/`if` twice, ate `closeSession` body once) — every structural edit gets a re-read of the region before push, no exceptions.
+46. Reply-context is sticky: topic quotes + accidental swipe-replies set `reply_to_message` on commands. Design command handlers to honor explicit args DESPITE reply context (fallthrough), not instead of it.
+47. `/startchat` lived only in Topic 2 while the comment said "commands live in General" (neither was true) — audit handler placement, not comments, when users report "nothing happen".
+48. Onboarding strings are load-bearing layout: `§§` split-markers give dividers without new keys; `maskLine`/`startBody` copy must track mask-policy changes (stale "contacts hidden" caught during dana slice).
+49. Tgcloud `push` compiles server-side — `node --check` green is necessary but not sufficient (the missing-comma push failure). Always check `strings.js` explicitly; parity script is regex, not a parser.
+
+Open threads: live promotion (token; `bot/@BotName` convention); minta-link (paused, needs phrases); `/faqsync` (unbuilt); announce batching; ban/warn Malay voice; commit pending explicit ask (origin still `96857a0`). Test debt: EN paths light; feedback `#F` flow live-tested BM-first.
 
 ## Checkpoint 9 — 04 Nov 2026 (Just_arobot: Malay + kinds + flow discipline)
 

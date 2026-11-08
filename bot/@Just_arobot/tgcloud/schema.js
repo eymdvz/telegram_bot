@@ -19,6 +19,8 @@ export const users = table('users', {
   warnMedium: integer('warn_medium').default(0),
   anum: text('anum'),
   lang: text('lang'), // ms | en; null = never chose (gets the picker on /start)
+  lastSeen: integer('last_seen', { mode: 'timestamp' }), // last inbound DM (touched hourly)
+  dead: integer('dead').default(0), // 1 = bot→user sends fail (blocked/deleted; learned)
 }, (t) => ({
   aliasIdx: uniqueIndex('uidx_users_alias').on(t.alias),
   anumIdx: uniqueIndex('uidx_users_anum').on(t.anum),
@@ -57,6 +59,7 @@ export const pendingIntents = table('pending_intents', {
   text: text('text'),
   fileId: text('file_id'),
   caption: text('caption'),
+  parked: text('parked'), // staged-later content JSON {kind,text,fileId,caption} (question auto-route)
   created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 });
 
@@ -70,6 +73,15 @@ export const edits = table('edits', {
   created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 });
 
+// Author delete requests on approved posts (#D id).
+// status: pending | applied | dismissed
+export const deletes = table('deletes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  submissionId: integer('submission_id').notNull(),
+  status: text('status').default('pending'),
+  created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+});
+
 // Admin-chat sessions (user ↔ admin direct line, Topic 2).
 // status: open | closed. One open per user; plain DMs route here while open.
 export const sessions = table('sessions', {
@@ -79,6 +91,79 @@ export const sessions = table('sessions', {
   lastMsgAt: integer('last_msg_at', { mode: 'timestamp' }),
   closedBy: integer('closed_by'),
   created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+});
+
+// Mod notes: author notes (one active per user, on all future cards) + card
+// notes (threaded reply under one #C card, deletable via stored msg id).
+export const notes = table('notes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull(),
+  adminId: integer('admin_id').notNull(),
+  text: text('text').notNull(),
+  submissionId: integer('submission_id'),
+  cardMsgId: integer('card_msg_id'),
+  created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+});
+
+// On-duty roster: one row per admin that ever toggled. !all pings greens
+// only (owner `!all all` overrides); /adminstats dots the greens.
+export const duty = table('duty', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tgId: integer('tg_id').notNull().unique(),
+  on: integer('on').default(1),
+  updated: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+});
+
+// Daily outgoing-DM counter (one row/day; BotFather-style "bot talk" stats).
+export const dayOut = table('day_out', {
+  day: text('day').primaryKey(),
+  n: integer('n').default(0),
+});
+
+// Monthly crown holders (bot-side honor — custom titles are owner-promoted
+// only, so holders get 👑/⚡ markers in /adminstats instead).
+export const crowns = table('crowns', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  category: text('category').notNull(), // actions | triage | overall
+  tgId: integer('tg_id').notNull(),
+  month: text('month').notNull(), // YYYY-MM at crowning time
+  title: text('title').notNull(),
+  created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+});
+
+// Singleton key/value flags (maintenance mode + future toggles).
+export const meta = table('meta', {
+  key: text('key').primaryKey(),
+  value: text('value'),
+});
+
+// Bot feedback reports (bug/idea → admin General as #F cards, never published).
+export const feedback = table('feedback', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull(),
+  status: text('status').default('unconfirmed'), // unconfirmed | posted | cancelled
+  mediaKind: text('media_kind').default('text'), // text | photo | video
+  text: text('text'),
+  caption: text('caption'),
+  fileId: text('file_id'),
+  userMessageId: integer('user_message_id'),
+  previewMsgId: integer('preview_msg_id'),
+  actionMsgId: integer('action_msg_id'),
+  version: text('version'),
+  created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+});
+
+// FAQ replica (Sheet "Unija FAQ" is master; /faqsync pulls CSV → upserts here).
+export const faq = table('faq', {
+  key: text('key').primaryKey(),
+  category: text('category'),
+  questionMs: text('question_ms'),
+  answerMs: text('answer_ms'),
+  questionEn: text('question_en'),
+  answerEn: text('answer_en'),
+  sort: integer('sort').default(0),
+  active: integer('active').default(1),
+  source: text('source'),
 });
 
 // Topic-2 message → user map (admin swipe-reply routing).
@@ -154,7 +239,15 @@ export const submissions = table('submissions', {
   isQuestion: integer('is_question').default(0), // legacy flag (kept) — kind is truth
   kind: text('kind').default('confession'), // confession | question | lost | found
   kindSeq: integer('kind_seq'), // per-kind serial (#ask1, #lost1…); null = pre-numbering
-  previewMsgId: integer('preview_msg_id'), // staged preview content message (action msg needs no column)
+  askCat: text('ask_cat'), // question category key (makan/sewa/servis/…) — null = uncategorized
+  askSub: text('ask_sub'), // sub-category key (runner/grab/luar/…) — null = none
+  previewMsgId: integer('preview_msg_id'), // staged preview content message
+  actionMsgId: integer('action_msg_id'), // staged preview action message (Confirm row)
+  ackMsgId: integer('ack_msg_id'), // Confirm ack bubble (reply-target match for the short guide)
+  pollData: text('poll_data', { mode: 'json' }), // native poll: { options:[], correct:null|idx, multi:0|1, explain:null } (question lives in text)
+  noticeIds: text('notice_ids', { mode: 'json' }), // transient DM notices (caption hold/nudge) — die on Confirm/Cancel
+  rplCleared: integer('rpl_cleared').default(0), // reply-prefix soft gate cleared by owner ("not a reply") — survives edits
+  grpCleared: integer('grp_cleared').default(1), // group-link soft gate: 1 = clear (no link at staging, or owner cleared); 0 = held — edits re-hold, never release
   created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 }, (t) => ({
   kindSeqIdx: uniqueIndex('uidx_sub_kind_seq').on(t.kind, t.kindSeq),
