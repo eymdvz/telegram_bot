@@ -12,9 +12,24 @@ var CONFIG = {
   zoneCaption: 'Zon TRG01: Kuala Terengganu, Marang, Kuala Nerus',
   footerTag: 'IlmuDemiFaedahInsan',
   footerBy: 'utmconfession',
+  ramadan: 'auto', // 'auto' | true | false — Ramadan lines when hijri month is 09 (or backup window below)
+  ramadanWindow: { start: '2027-02-08', end: '2027-03-09' }, // backup when API hijri is patchy (Raya 2027-03-10)
+  // TEST ONLY (keep commented for live): force a hijri date to preview Ramadan lines.
+  //testHijri: '1448-09-05',
+  //testHijriNext: '1448-09-06',
   prayers: [
+    { key: 'imsak',   emoji: '⏳', name: 'Imsak',
+      head: '🕌 Waktu Imsak! ⏳',
+      body: 'Yang bersahur tu boleh dah slow-slow siap untuk azan Subuh yaa' },
     { key: 'fajr',    emoji: '⛅️', name: 'Subuh'   },
-    { key: 'dhuhr',   emoji: '🌞', name: 'Zohor'   },
+    { key: 'syuruk',  emoji: '🌄', name: 'Syuruk', noTick: true,
+      head: '🕌 Waktu Syuruk! 🌄',
+      body: 'Matahari dah terbit, Dhuha masuk ~25 minit lagi.' },
+    { key: 'dhuha',   emoji: '🌅', name: 'Dhuha',
+      head: '🕌 Waktu Solat Dhuha! 🌅',
+      body: '<blockquote>Daripada Abu Zar r.a., Rasulullah SAW bersabda: "Pada setiap pagi, ada kewajipan sedekah bagi tiap-tiap sendi salah seorang dari kamu. Maka tiap-tiap tasbih adalah sedekah, tiap-tiap tahmid adalah sedekah, tiap-tiap tahlil adalah sedekah, tiap-tiap takbir adalah sedekah, menyuruh kepada kebaikan adalah sedekah, mencegah kemungkaran adalah sedekah. Dan semua itu cukup (dibayar) dengan dua rakaat Dhuha yang didirikannya." (Riwayat Muslim no. 720)</blockquote>' },
+    { key: 'dhuhr',   emoji: '🌞', name: 'Zohor',
+      pre: "⏰ Menghampiri Waktu Zohor {time}\n(Waktu Dhuha telah tamat. sekarang waktu istiwa', diharamkan solat sunat pada waktu ini kecuali pada hari Jumaat)." },
     { key: 'asr',     emoji: '☀️', name: 'Asar'    },
     { key: 'maghrib', emoji: '🌙', name: 'Maghrib' },
     { key: 'isha',    emoji: '⭐️', name: 'Isyak'   }
@@ -30,8 +45,18 @@ function reminder(col, name) {
     'bagi umat Islam.\nMoh belaka solat awal!\n');
 }
 
-// Helper Functions
+// Helper Functions (col is legacy/unused — 0 for new rows)
+function imsak()    { return reminder(0, 'imsak');    }
 function fajr()    { return reminder(2, 'fajr');    }
+function dhuha()    { return reminder(0, 'dhuha');    }
+function syuruk()   { return reminder(0, 'syuruk');   } // manual only — no auto trigger
+
+// 10-min heads-up (light notice, no card edit, no quote)
+// Mornings excluded: preFajr ≈ imsak time (noise), preDhuha unneeded.
+function preDhuhr()   { return SolatRich.pre(CONFIG, 'dhuhr');   }
+function preAsr()     { return SolatRich.pre(CONFIG, 'asr');     }
+function preMaghrib() { return SolatRich.pre(CONFIG, 'maghrib'); }
+function preIsha()    { return SolatRich.pre(CONFIG, 'isha');    }
 function dhuhr()   { return reminder(3, 'dhuhr');   }
 function asr()     { return reminder(4, 'asr');     }
 function maghrib() { return reminder(5, 'maghrib'); }

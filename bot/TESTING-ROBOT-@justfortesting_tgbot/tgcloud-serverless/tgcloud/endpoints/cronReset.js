@@ -10,7 +10,8 @@ export default async function (input, ctx) {
   const key = dayKey(input?.nowMs ? new Date(Number(input.nowMs)) : new Date());
   const row = await db.select().from(prayerDays).where(eq(prayerDays.day, key)).get();
   if (!row) return { day: key, deleted: [] };
-  const ids = [row.mainMsgId, ...Object.values(row.reminderJson || {})].filter(Boolean);
+  const ids = [row.mainMsgId, ...Object.values(row.reminderJson || {}), ...Object.values(row.preJson || {})]
+    .map(Number).filter((id) => id > 0);
   const deleted = [];
   for (const id of ids) {
     try {

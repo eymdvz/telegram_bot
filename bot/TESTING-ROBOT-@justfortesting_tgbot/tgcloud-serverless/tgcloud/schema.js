@@ -10,5 +10,6 @@ export const prayerDays = table('prayer_days', {
   timesJson: text('times_json', { mode: 'json' }), // { fajr: unix, dhuhr: unix, ... }
   mainMsgId: integer('main_msg_id'), // day-card message in test channel
   reminderJson: text('reminder_json', { mode: 'json' }), // { fajr: msgId, ... }
+  preJson: text('pre_json', { mode: 'json' }), // { dhuhr: msgId, ... } 10-min heads-ups
   created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 });

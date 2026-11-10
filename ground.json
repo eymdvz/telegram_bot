@@ -1,0 +1,18 @@
+{
+  "testing": {
+    "channel_id": -1001267775431,
+    "channel_name": "Test Channel",
+    "group_id": -1002435146176,
+    "zone": "TRG01",
+    "_master": "bot/TESTING-ROBOT-@justfortesting_tgbot/testing-ground/ground.json (this section mirrors it)"
+  },
+  "live": {
+    "bot_username": "@autosent_robot",
+    "channel_id": -1001779734656,
+    "channel_name": "unijaconfession",
+    "channel_link": "https://t.me/unijaconfession",
+    "group_id": -1003996987649,
+    "group_note": "per Checkpoint 11 (upgraded supergroup id) — verify via @userinfobot before wiring anything to it",
+    "zone": "TRG01"
+  }
+}

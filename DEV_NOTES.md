@@ -1,6 +1,33 @@
 # DEV_NOTES — telegram_bot
 
-Latest: Checkpoint 12 — 10 Nov 2026.
+Latest: Checkpoint 14 — 11 Nov 2026.
+
+## Checkpoint 14 — 11 Nov 2026 (live cutover prep + root ground.json + Ramadan v2.4)
+
+Headspace: owner-driven finish — live cutover, shared IDs file, Ramadan before Feb 2027. Short loops, screenshots as verdicts throughout.
+
+What shipped (ALL UNCOMMITTED): root `ground.json` (live + testing mirror; TESTING-ROBOT copy stays master for testing); GAS `waktu-solat-rich` v2.4 Ramadan mode (auto by hijri-09 + Gregorian backup window 2027-02-08→09, terawih-vs-Raya by tomorrow's hijri, `TEST_HIJRI` hook — verified via override); live `Code.gs` value map (channelId/channelLink/`BOT_TOKEN`, zone unchanged); owner created `bot/Autobot-@autosent_robot/GAS/waktu-solat-rich/` (their live port copy); live `@autosent_robot` upgrade confirmed working.
+
+Bugs + lessons:
+71. `TEST_HIJRI` uses camelCase in-code — searching `TEST_HIJRI` finds nothing. Match the file's convention before claiming a line is missing.
+72. Two ID files drift — root `ground.json` is the single truth; TESTING-ROBOT copy stays master for testing only.
+
+Open threads: commit + push (needs explicit ask); live watch one full prayer cycle; `TGCLOUD_TOKEN` Actions secret; retire-or-keep `cronProbeCombo.js`; fancy extras parked (rotating zikir, weather, countdown, qibla map, custom emoji, adhan voice).
+
+## Checkpoint 13 — 11 Nov 2026 (custom bodies + pre-ticks + rich reminders + combo)
+
+Headspace: user-directed sprint, screenshots as verdicts. "Explain like im5" held; my repeated changelog-header-eats (4×, same anchor bug as lesson 51) need the fix: always include the following header in oldString.
+
+What shipped (ALL UNCOMMITTED): GAS `waktu-solat-rich` v1.3→v2.3 — custom heads/bodies (Imsak sahur line, Dhuha hadith blockquote, Syuruk manual text), on-time ticks (trigger −60s + sleep-until-time, cap 120s), Syuruk silent row (`noTick`, skipped by next-buttons), manual `syuruk()`, 10-min pre-ticks (`pre*`, skips Syuruk+Imsak+Fajr+Dhuha; pre auto-deleted on full post), custom pre texts (Zohor istiwa' line, default template with prev-prayer), full-rich reminders (paragraph + blockquote + green timetable row; plain 2-row fallback), combo split (next-prayer moved to inline row, card jump). tgcloud trial mirrors GAS (pushed through rev 11; `pre_json` migrated; probe endpoints retired except `cronProbeCombo.js`). Verified live on test channel throughout (cards 373→474); test bot admin in `-1001267775431`.
+
+Bugs + lessons:
+66. `SolatRich.pre is not a function` = function exists but missing from the IIFE's `return` — export list is a second source of truth; check it on every new function.
+67. Rich quote must mirror the card's CURRENT formatting (plain → `{bold}` → `{marked:{bold}}` as the card edit evolves); edit-first-then-quote is the ordering rule.
+68. GAS `UrlFetchApp` form posts need `JSON.stringify` for nested objects (`rich_message`, `reply_parameters`, `reply_markup`) — same pattern as the old `reply_markup` code.
+69. tgcloud `run` arg quoting: outer double + inner single JSON5 (`"{ key: 'asr' }"`); PowerShell eats the reverse.
+70. Changelog `edit` anchor bug (self-inflicted ×4): never anchor on the header line being replaced — include the following header in oldString.
+
+Open threads: commit + push (needs explicit ask); retire-or-keep `cronProbeCombo.js`; Ramadan mode + 5-button rework parked (user call); live GAS cutover (user call); `TGCLOUD_TOKEN` Actions secret still pending.
 
 ## Checkpoint 12 — 10 Nov 2026 (solat rich trial → GAS wins → reorg + docs)
 
