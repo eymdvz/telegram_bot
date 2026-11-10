@@ -1,7 +1,10 @@
 {
-  "channel_id": -1001267775431,
-  "channel_name": "Test Channel",
-  "group_id": -1002435146176,
-  "zone": "TRG01",
-  "note": "same test env as bot/@Just_arobot tgcloud/lib/config.js. Live (DO NOT POST HERE): channel -1001779734656, group -1002010542998."
+    "channel_id": -1001267775431,
+    "channel_name": "Test Channel",
+    "discussion_id": -1004441481560,
+    "discussion_name": " Test Channel Chat",
+    "group_id": -1002435146176,
+    "group_name": "Test group",
+    "zone": "TRG01",
+    "note": "same test env as bot/@Just_arobot tgcloud/lib/config.js. Live (DO NOT POST HERE): channel -1001779734656, group -1002010542998."
 }
