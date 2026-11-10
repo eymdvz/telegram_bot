@@ -17,6 +17,7 @@ export const MASK_CONTACTS = true; // master mask switch (staging + edits)
 export const MASK_MENTIONS = false; // mask @usernames (off = allowed, owner call)
 export const MASK_PHONES = false; // mask phone numbers (off = allowed, owner call — watch abuse)
 export const TEXT_LIMITS = true; // 5 texts/hour + 20/day rolling (EXEMPT_IDS bypass)
+export const TG_BAN_SYNC = true; // Telegram-side mute/ban alongside DB bans (restrict needs bot can_restrict_members)
 export const LOWQ_BLOCK = true; // hard-block low-effort intake (<5 chars, test/hai/dots…) — no card, uncounted
 export const PROFANITY_MASK = true; // auto-censor curses on channel posts (card keeps original + kesat flag)
 export const DRIP_FEED = false; // cooldown + night pause queue (off = Accept posts at once)
@@ -40,7 +41,7 @@ export const TAP_LIMIT = 10; // max button taps per rolling window (abuse guard)
 export const TAP_WINDOW_SEC = 60;
 export const TAP_NOTICE_SEC = 300; // one slow-down notice per this many seconds
 
-export const VERSION = 'V 1.8.1 081126'; // user-visible bot version (V <maj>.<min>.<patch> DDMMYY; bump per slice, shown by /changelog)
+export const VERSION = 'V 1.9.0 101126'; // user-visible bot version (V <maj>.<min>.<patch> DDMMYY; bump per slice, shown by /changelog)
 
 export const ALL_COOLDOWN_SEC = 60; // shared cooldown on owner !all mention blasts
 

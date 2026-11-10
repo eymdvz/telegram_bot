@@ -3,7 +3,7 @@ import { eq, and, desc, sql } from 'sdk/db';
 import { users, submissions, audit, appeals, pendingIntents, edits, deletes, feedback } from '../schema.js';
 import { guarded } from '../lib/errors.js';
 import { isAdmin, groupAdmins, lookupAdmin } from '../lib/admins.js';
-import { banNotice, warnCounts, whoOf, cardWho, dispAid, channelPostLink, publishToChannel, postDue, queuePos, flushQueue, maskContacts, censorProfanity, kindOf, KIND_TAGS, NO_SERIAL, danaTag, tapAllowed, adminStatsText, astatsRow, oldestPage, tutRow, atutRow, dutyGreens, bumpOut, markDeadByTg, askCatLabel, crownMap, tag } from '../lib/moderation.js';
+import { banNotice, warnCounts, whoOf, cardWho, dispAid, channelPostLink, publishToChannel, postDue, queuePos, flushQueue, maskContacts, censorProfanity, tgEnforce, tgLift, kindOf, KIND_TAGS, NO_SERIAL, danaTag, tapAllowed, adminStatsText, astatsRow, oldestPage, tutRow, atutRow, dutyGreens, bumpOut, markDeadByTg, askCatLabel, crownMap, tag } from '../lib/moderation.js';
 import { STR, L } from '../lib/strings.js';
 import { submitConfession, confirmSubmission, confirmFeedback, openChatSession, closeSession, sendStart, sendMenu, chatOpenFor, listPage } from './message.js';
 import { ADMIN_GROUP_ID, INBOX_TOPIC_ID, CHANNEL_ID, ADMIN_IDS, SUPER_ADMIN_ID, EXEMPT_IDS, WARN_TIERS, RINGAN_SECOND_BAN_DAYS, SEDERHANA_BAN_DAYS, APPEAL_CONTACT, DRIP_FEED, MASK_CONTACTS, PROFANITY_MASK, LANG, FAQ_URL, FAQ_GATE_SEC, MAP_URL, BUS_URL, TERMS_URL } from '../lib/config.js';
@@ -1350,9 +1350,14 @@ async function handle(query) {
     }
     await db.update(submissions).set({ status: 'warned' }).where(eq(submissions.id, id)).run();
     await db.insert(audit).values({ adminId, action: 'warn', targetUserId: sub.userId, reason: `#C${id} · ${key} (${tier})` }).run();
+    let tgNote = '';
     if (banUntil !== undefined && u) {
       await db.update(users).set({ banned: 1, banReason: key, bannedUntil: banUntil }).where(eq(users.id, u.id)).run();
-      await db.insert(audit).values({ adminId, action: 'ban', targetUserId: sub.userId, reason: `#C${id} ${fmtUntil(banUntil)} · ${key} (auto, ${tier})` }).run();
+      // Tier mapping: sederhana → discussion-group mute, berat → group + channel ban.
+      const tgScope = tier === 'berat' ? 'ban-all' : tier === 'sederhana' ? 'mute-group' : 'bot';
+      const tg = tgScope === 'bot' ? [] : await tgEnforce(u.tgId, tgScope, banUntil ?? null).catch(() => []);
+      tgNote = tg.length ? ` · ${tg.join(',')}` : '';
+      await db.insert(audit).values({ adminId, action: 'ban', targetUserId: sub.userId, reason: `#C${id} ${fmtUntil(banUntil)} · ${key} (auto, ${tier})${tgNote}` }).run();
     }
     await editCard(query, line, { inline_keyboard: [] });
     await api.answerCallbackQuery({ callback_query_id: query.id, text: banUntil !== undefined ? `Warned + banned (${key}).` : `Warned #C${id} (${key}).` });
@@ -1726,8 +1731,10 @@ async function handle(query) {
     const u = await db.select().from(users).where(eq(users.id, ap.userId)).get();
     if (isAccept) {
       if (u) await db.update(users).set({ banned: 0, banReason: null, bannedUntil: null, warnLight: 0, warnMedium: 0 }).where(eq(users.id, u.id)).run();
+      const tg = u ? await tgLift(u.tgId).catch(() => []) : [];
+      const tgNote = tg.length ? ` · ${tg.join(',')}` : '';
       await db.update(appeals).set({ status: 'accepted' }).where(eq(appeals.id, id)).run();
-      await db.insert(audit).values({ adminId, action: 'appeal_accept', targetUserId: ap.userId, reason: `#A${id}` }).run();
+      await db.insert(audit).values({ adminId, action: 'appeal_accept', targetUserId: ap.userId, reason: `#A${id}${tgNote}` }).run();
       await editCard(query, '✅ Appeal accepted (unbanned)', { inline_keyboard: [] });
       await api.answerCallbackQuery({ callback_query_id: query.id, text: `Appeal #A${id} accepted.` });
       try {

@@ -236,4 +236,9 @@ export const CHANGELOG = [
     ms: 'Tutup tutorial + halaman tutorial berfungsi dalam group (stateless sahaja; selebihnya kekal DM).',
     en: 'Tutorial close + pages work in groups (stateless only; everything else stays DM-locked).',
   },
+  {
+    v: '1.9.0 101126', date: '10 Nov 2026',
+    ms: 'Ban Telegram: sederhana = mute group, berat = ban group+channel; /ban [group|channel|all]; /unban angkat semua.',
+    en: 'Telegram bans: medium = group mute, heavy = group+channel ban; /ban [group|channel|all]; /unban lifts all.',
+  },
 ];

@@ -440,11 +440,14 @@ export async function listPage(u, page = 0) {
   return { text: lines.join('\n'), buttons: nav.length ? { inline_keyboard: [nav] } : null };
 }
 
-async function applyBan(targetUser, adminId, threadId, until, reason) {
+async function applyBan(targetUser, adminId, threadId, until, reason, scope = 'bot') {
   await db.update(users).set({ banned: 1, banReason: reason, bannedUntil: until }).where(eq(users.id, targetUser.id)).run();
-  await db.insert(audit).values({ adminId, action: 'ban', targetUserId: targetUser.id, reason: `${fmtUntil(until)} · ${reason}` }).run();
+  // Telegram-side enforcement runs before the audit so the outcome rides along.
+  const tg = scope === 'bot' ? [] : await tgEnforce(targetUser.tgId, scope, until).catch(() => []);
+  const tgNote = tg.length ? ` · ${tg.join(',')}` : '';
+  await db.insert(audit).values({ adminId, action: 'ban', targetUserId: targetUser.id, reason: `${fmtUntil(until)} · ${reason}${tgNote}` }).run();
   if (threadId) {
-    await api.sendMessage({ chat_id: ADMIN_GROUP_ID, ...threadOrInbox(threadId), text: `Banned ${await cardWho(targetUser)} ${fmtUntil(until)} — ${reason}` });
+    await api.sendMessage({ chat_id: ADMIN_GROUP_ID, ...threadOrInbox(threadId), text: `Banned ${await cardWho(targetUser)} ${fmtUntil(until)} — ${reason}${tgNote}` });
   }
   try {
     await api.sendMessage({ chat_id: targetUser.tgId, text: banNotice(until, reason, true) });
@@ -1877,17 +1880,28 @@ async function handleAdminGroup(msg, text) {
     }
     if (text.startsWith('/unban')) {
       await db.update(users).set({ banned: 0, banReason: null, bannedUntil: null, warnLight: 0, warnMedium: 0 }).where(eq(users.id, target.id)).run();
-      await db.insert(audit).values({ adminId: sender, action: 'unban', targetUserId: target.id }).run();
-      await api.sendMessage({ chat_id: ADMIN_GROUP_ID, ...threadOrInbox(threadId), text: `Unbanned ${await cardWho(target)}.` });
+      const tg = await tgLift(target.tgId).catch(() => []);
+      const tgNote = tg.length ? ` · ${tg.join(',')}` : '';
+      await db.insert(audit).values({ adminId: sender, action: 'unban', targetUserId: target.id, reason: tgNote || null }).run();
+      await api.sendMessage({ chat_id: ADMIN_GROUP_ID, ...threadOrInbox(threadId), text: `Unbanned ${await cardWho(target)}.${tgNote}` });
       try { await api.sendMessage({ chat_id: target.tgId, text: (STR[LANG] ?? STR.ms).unblocked }); await bumpOut(); } catch {}
       return;
     }
     if (!replyId) {
-      await api.sendMessage({ chat_id: ADMIN_GROUP_ID, ...threadOrInbox(threadId), text: 'Reply to a card: /ban <duration> <reason>.' });
+      await api.sendMessage({ chat_id: ADMIN_GROUP_ID, ...threadOrInbox(threadId), text: 'Reply to a card: /ban <duration> <reason> [group|channel|all].' });
       return;
     }
-    const { until, reason } = parseBanArgs(text.slice(4));
-    await applyBan(target, sender, threadId ?? INBOX_TOPIC_ID, until, reason);
+    let { until, reason } = parseBanArgs(text.slice(4));
+    // Optional trailing scope token (bot default): group = full group ban,
+    // channel = channel ban, all = both. Tier auto-bans choose their own.
+    let scope = 'bot';
+    const sm = reason.match(/\s+(group|channel|all)$/i);
+    if (sm) {
+      const w = sm[1].toLowerCase();
+      scope = w === 'group' ? 'ban-group' : w === 'channel' ? 'ban-channel' : 'ban-all';
+      reason = reason.slice(0, sm.index).trim() || 'no reason';
+    }
+    await applyBan(target, sender, threadId ?? INBOX_TOPIC_ID, until, reason, scope);
     return;
   }
   // Swipe-reply to a card/content message → relay text to the user (admin-only).

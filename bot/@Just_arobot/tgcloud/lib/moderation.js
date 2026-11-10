@@ -2,7 +2,7 @@ import { db, api } from 'sdk';
 import { sql, eq } from 'sdk/db';
 import { fetch as sdkFetch } from 'sdk/fetch';
 import { users, submissions, parts, audit, hits, duty, meta, crowns, faq } from '../schema.js';
-import { WARN_TIERS, WARN_WINDOW_DAYS, CHANNEL_ID, ADMIN_GROUP_ID, EXEMPT_IDS, TEXT_HOURLY_LIMIT, TEXT_DAILY_LIMIT, POST_COOLDOWN_SEC, QUIET_START_UTC_H, QUIET_END_UTC_H, DRIP_FEED, TAP_LIMIT, TAP_WINDOW_SEC, TAP_NOTICE_SEC, LANG, SUPER_ADMIN_ID, MASK_MENTIONS, MASK_PHONES, FAQ_CSV_URL, PROFANITY_MASK } from './config.js';
+import { WARN_TIERS, WARN_WINDOW_DAYS, CHANNEL_ID, ADMIN_GROUP_ID, EXEMPT_IDS, TEXT_HOURLY_LIMIT, TEXT_DAILY_LIMIT, POST_COOLDOWN_SEC, QUIET_START_UTC_H, QUIET_END_UTC_H, DRIP_FEED, TAP_LIMIT, TAP_WINDOW_SEC, TAP_NOTICE_SEC, LANG, SUPER_ADMIN_ID, MASK_MENTIONS, MASK_PHONES, FAQ_CSV_URL, PROFANITY_MASK, TG_BAN_SYNC, DISCUSSION_GROUP_ID } from './config.js';
 import { STR } from './strings.js';
 import { adminDisplay } from './admins.js';
 
@@ -15,6 +15,60 @@ export function banNotice(until, reason, appealable = true) {
     ? `You have been temporary blocked until ${new Date(until).toISOString().slice(0, 10)}.`
     : 'You have been banned forever. Goodbye.';
   return `${head}\nReason: ${reason}${appealable ? '\n/appeal <text> to appeal.' : ''}`;
+}
+
+// Telegram-side enforcement (V1.9.0): mute in the discussion group +
+// ban in group/channel, alongside the DB intake block. Kill switch
+// TG_BAN_SYNC. Group scope needs DISCUSSION_GROUP_ID (0 = skip, audited).
+// Scopes: 'mute-group' | 'ban-group' | 'ban-channel' | 'ban-all'.
+// Never throws — returns audit-suffix tags (success and failure both).
+const MUTE_DENY = { can_send_messages: false, can_send_audios: false, can_send_documents: false, can_send_photos: false, can_send_videos: false, can_send_video_notes: false, can_send_voice_notes: false, can_send_polls: false, can_send_other_messages: false, can_add_web_page_previews: false };
+export async function tgEnforce(tgId, scope, until) {
+  if (!TG_BAN_SYNC) return ['tg:off'];
+  if (!tgId) return [];
+  const id = Number(tgId);
+  const secs = until ? Math.floor(new Date(until).getTime() / 1000) : null;
+  const out = [];
+  const groupId = Number(DISCUSSION_GROUP_ID) || null;
+  if (scope === 'mute-group' || scope === 'ban-group' || scope === 'ban-all') {
+    if (!groupId) {
+      out.push('tg:no-group');
+    } else if (scope === 'mute-group') {
+      try {
+        await api.restrictChatMember({ chat_id: groupId, user_id: id, permissions: MUTE_DENY, ...(secs ? { until_date: secs } : {}) });
+        out.push('tg:muted');
+      } catch { out.push('tg:mute-failed'); }
+    } else {
+      try {
+        await api.banChatMember({ chat_id: groupId, user_id: id, ...(secs ? { until_date: secs } : {}) });
+        out.push('tg:gbanned');
+      } catch { out.push('tg:gban-failed'); }
+    }
+  }
+  if (scope === 'ban-channel' || scope === 'ban-all') {
+    try {
+      await api.banChatMember({ chat_id: CHANNEL_ID, user_id: id, ...(secs ? { until_date: secs } : {}) });
+      out.push('tg:cbanned');
+    } catch { out.push('tg:cban-failed'); }
+  }
+  return out;
+}
+
+// Mirror lift for /unban + appeal-accept (unban doubles as unmute).
+// Best-effort per surface, never throws.
+export async function tgLift(tgId) {
+  if (!TG_BAN_SYNC) return ['tg:off'];
+  if (!tgId) return [];
+  const id = Number(tgId);
+  const out = [];
+  const groupId = Number(DISCUSSION_GROUP_ID) || null;
+  if (groupId) {
+    try { await api.unbanChatMember({ chat_id: groupId, user_id: id }); out.push('tg:gunbanned'); }
+    catch { out.push('tg:gunban-failed'); }
+  }
+  try { await api.unbanChatMember({ chat_id: CHANNEL_ID, user_id: id }); out.push('tg:cunbanned'); }
+  catch { out.push('tg:cunban-failed'); }
+  return out;
 }
 
 // UID (e.g. UID-001): per-user anonymous number, join-ordered. Legacy CID-###

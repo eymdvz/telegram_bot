@@ -211,6 +211,7 @@ endpoint-set table — decided at live-promotion time. Never commit tokens.
 - [x] Discussion wiring test (`DISCUSSION_GROUP_ID`; group replies to auto-forwarded posts → anonymous reply-confession, DM preview)
 - [x] User delete requests (`deletes` table; `/delete` by reply → `del_apply`/`del_dismiss` card; `approved-undone`; threaded replies orphan noted)
 - [x] Group-safe tutorial (`dismiss` + `tut:` pager bypass the DM lock; state-changing taps stay locked; backported to test)
+- [x] Telegram enforcement (`tgEnforce`/`tgLift`; sederhana→mute, berat→ban-all; `/ban [group|channel|all]`; `TG_BAN_SYNC`; test-first)
 - [x] Contacts allowed (usernames + phones unmasked, emails/URLs still hidden; `MASK_MENTIONS`/`MASK_PHONES` revert switches; runner/grab/tumpang prompts warn public exposure)
 - [x] `/tutorial` (DM, 4 paged steps, BM/EN) + `/changelog` (VERSION + seeded entries; DM locale-aware, group English, both autocompletes)
 - [x] Admin `/tutorial` (group, 4 paged English steps, own cursor; group-side dismiss unblocked)

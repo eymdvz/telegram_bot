@@ -1,6 +1,24 @@
 # DEV_NOTES — telegram_bot
 
-Latest: Checkpoint 11 — 08 Nov 2026.
+Latest: Checkpoint 12 — 10 Nov 2026.
+
+## Checkpoint 12 — 10 Nov 2026 (solat rich trial → GAS wins → reorg + docs)
+
+Headspace: probe-driven loop with docs as weapons — user pasted Bot API screenshots (`quote`, `quote_rich_texts`, `RichText`, `RichTextMarked`) and each one turned into a green probe within minutes. Plan mode on/off 4×; "explain like im5" held for the cron/VPS/quota stretch. Trial lived in `bot/TESTING-ROBOT-@justfortesting_tgbot` throughout; live GAS untouched.
+
+What shipped (ALL UNCOMMITTED except agents_skills): tgcloud trial on `app9294438713` (`tgcloud-serverless/`: `prayer_days`, `cronDaily/cronTick/cronReset`, test channel `-1001267775431` card `376` rich + `fajr` reminder quoted); GAS `waktu-solat-rich` v1.0→v1.2 (`SolatRich.gs`: rich card, rich card-edit, `quote_rich_texts` mirrored, marked+bold current row — all user-verified live in test channel); reorg (`GAS/` vs `tgcloud-serverless/`, `testing-ground/ground.json` + `channel_name`, workflows repointed, stale root `tgcloud/` + `node_modules/` + `.tgcloud/` removed after hash check); `.github/workflows/solat-trial-{daily,tick}.yml` (needs `TGCLOUD_TOKEN` secret + commit); `docs/chat-ids-and-links.md` (+helper bots); session-handoff SKILL.md patched (docs/ check + placement ask) and PUSHED to agents_skills (`07afc41`).
+
+Bugs + lessons:
+58. Rich cards reject plain `quote` (`QUOTE_TEXT_INVALID` x2 — full-line and cell-exact both fail). `quote_rich_texts` with exact cell texts passes. Quote index covers regular text only.
+59. Quote must mirror card formatting AND nesting exactly (bolded row → `{bold}` objects; marked+bold → `{marked:{bold}}`). Always edit card first, then quote mirrors the edit.
+60. `editMessageText` with `rich_message` edits rich cards in place (was unverified; now green in GAS). Delete+repost stays fallback.
+61. Bot API ids are integers — GAS PropertiesService strings need `parseInt` before `deleteMessages`.
+62. `daily()` trigger wipe must spare `setup`+`daily` handlers or the schedule dies the first morning.
+63. `t.me/c/` strips `-100` (`t.me/c/100...` = nonexistent chat). Same for web `#-...` form.
+64. `tgcloud pull` with a stale snapshot duplicates the tree at the wrong root — verify with `status` + file hashes after moving project folders.
+65. tgcloud has no clock — no internal scheduler. External GitHub Actions can't hit endpoints directly (401, initData verified) — must run `npx tgcloud run` with `TGCLOUD_TOKEN`. Cron-job.org-style pingers don't work.
+
+Open threads: live GAS cutover (user call; keep old files 1 day backup); `TGCLOUD_TOKEN` secret for Actions (user); quota watch (10-min tick ≈4300 vs 2000 free min on private repos).
 
 ## Checkpoint 11 — 08 Nov 2026 (filters → polls → live promotion)
 
