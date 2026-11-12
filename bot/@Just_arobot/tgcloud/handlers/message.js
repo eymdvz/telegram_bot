@@ -2177,6 +2177,14 @@ async function handle(msg) {
       await sendLangPicker(chatId);
       return;
     }
+    // Deep link (?start=confess from channel-DM card): same landing as the
+    // send_conf button — guidance text + Tutup, then their next message stages.
+    const param = text.replace(/^\/start(@[A-Za-z0-9_]+)?/, '').trim().split(/\s+/)[0].toLowerCase();
+    if (param === 'confess') {
+      const ht = L(u);
+      await api.sendMessage({ chat_id: chatId, text: ht.sendGuidance, reply_markup: { inline_keyboard: [[{ text: ht.tutupBtn, callback_data: 'dismiss' }]] } });
+      return;
+    }
     await sendStart(chatId, msg.from, L(u));
     return;
   }

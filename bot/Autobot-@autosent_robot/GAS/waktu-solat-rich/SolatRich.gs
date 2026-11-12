@@ -46,20 +46,20 @@ var SolatRich = (function () {
   }
 
   function buildBlocks(cfg, today, current) {
-    function headCell(t) { return { text: t, is_header: true, align: 'left', valign: 'top' }; }
-    function cell(t, hot) {
-      return hot
-        ? { text: { type: 'marked', text: { type: 'bold', text: t } }, align: 'left', valign: 'top' }
-        : { text: t, align: 'left', valign: 'top' };
-    }
+    function nameCell(t) { return { text: t, align: 'right', valign: 'top' }; }
+    function timeCell(t) { return { text: t, align: 'left', valign: 'top' }; }
+    function hotName(t) { return { text: t, is_header: true, align: 'right', valign: 'top' }; }
+    function hotTime(t) { return { text: t, is_header: true, align: 'left', valign: 'top' }; }
     var rows = cfg.prayers.map(function (p) {
-      var bold = (p.key === current);
-      return [cell(p.emoji + ' ' + p.name, bold), cell(fmtTime(today.times[p.key]), bold)];
+      var hot = (p.key === current);
+      return hot
+        ? [hotName(p.emoji + ' ' + p.name), hotTime(fmtTime(today.times[p.key]))]
+        : [nameCell(p.emoji + ' ' + p.name), timeCell(fmtTime(today.times[p.key]))];
     });
     var blocks = [
       { type: 'paragraph', text: cfg.headerTitle + '\n' + cfg.headerPlace + '\n\n' + today.dates + '\n' + today.hijri },
       { type: 'divider' },
-      { type: 'blockquote', blocks: [{ type: 'table', is_bordered: true, caption: cfg.zoneCaption, cells: [[headCell('Solat'), headCell('Waktu')]].concat(rows) }] },
+      { type: 'table', is_bordered: false, is_compact: true, caption: cfg.zoneCaption, cells: rows },
       { type: 'paragraph', text: [{ type: 'hashtag', text: '#' + cfg.footerTag, hashtag: cfg.footerTag }, '\nby @' + cfg.footerBy] },
       { type: 'buttons', align: 'center', buttons: [{ text: 'Waktu Solat ' + cfg.zone, url: 'https://dev.mamtj6.com/waktu-solat?location=' + cfg.zone, style: 'success' }] }
     ];
@@ -173,18 +173,22 @@ var SolatRich = (function () {
       // Per-prayer triggers, 60s EARLY (GAS fires late, never early —
       // edits() sleeps the remainder so the post lands on the exact time).
       // noTick rows (Syuruk) are card-only: no trigger, no reminder.
+      // Trigger fn names are Malay (Code.gs) — keys stay API-form.
+      var FN = { fajr: 'subuh', dhuhr: 'zohor', asr: 'asar', isha: 'isyak' };
       cfg.prayers.forEach(function (p) {
         if (p.noTick) return;
+        var fn = FN[p.key] || p.key;
         var t = new Date(today.times[p.key] * 1000 - 60000);
         if (t.getTime() > Date.now()) {
-          ScriptApp.newTrigger(p.key).timeBased().at(t).create();
+          ScriptApp.newTrigger(fn).timeBased().at(t).create();
         }
         // 10-min heads-up (skip silent rows + Imsak, which IS the fajr-10min
         // warning, + morning Fajr/Dhuha to keep dawn quiet).
         if (p.key === 'imsak' || p.key === 'fajr' || p.key === 'dhuha') return;
         var pre = new Date(today.times[p.key] * 1000 - 10 * 60 * 1000);
         if (pre.getTime() > Date.now()) {
-          ScriptApp.newTrigger('pre' + p.key.charAt(0).toUpperCase() + p.key.slice(1)).timeBased().at(pre).create();
+          var preBase = FN[p.key] || p.key;
+          ScriptApp.newTrigger('pre' + preBase.charAt(0).toUpperCase() + preBase.slice(1)).timeBased().at(pre).create();
         }
       });
       Logger.log('posted day card ' + sent.id + ' rich=' + sent.rich);
@@ -234,14 +238,13 @@ var SolatRich = (function () {
       }
 
       // 2) Reminder reply with real rich quote (verified in tgcloud trial).
-      // Card was just edited above, so the row is MARKED+BOLD — quote must
-      // keep the same nesting (API: "rich texts must be nested in the same way").
-      var qr = function (t) { return { type: 'marked', text: { type: 'bold', text: t } }; };
+      // Card row is now is_header (plain text) — quote stays plain strings
+      // to mirror the card (API: "rich texts must be nested in the same way").
       var rb = reminderBlocks(cfg, p, time, nextTxt, mainId, ramadanLine(cfg, today, load(stateKey(cfg, 'DAY')), current));
       var replyParams = {
         message_id: mainId,
         allow_sending_without_reply: true,
-        quote_rich_texts: [qr(p.emoji + ' ' + p.name), qr(time)]
+        quote_rich_texts: [p.emoji + ' ' + p.name, time]
       };
       var rr = callTelegram('sendRichMessage', {
         chat_id: cfg.channelId,

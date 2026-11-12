@@ -2,7 +2,27 @@
   "testing": {
     "channel_id": -1001267775431,
     "channel_name": "Test Channel",
-    "group_id": -1002435146176,
+    "channel_link": "https://t.me/c/1267775431",
+    "group_discussion_id": "-1004441481560",
+    "group_discussion_name": "Test Channel Chat Discussion",
+    "group_discussion_link": "https://t.me/c/4441481560",
+    "groups": {
+      "basic": {
+        "group_id": 0,
+        "group_name": "TBD — basic group (no topics possible)",
+        "link": "TBD — basic groups have no t.me/c link; use invite link"
+      },
+      "supergroup_plain": {
+        "group_id": -1002032955068,
+        "group_name": "Test Group (Supergroup)",
+        "link": "https://t.me/c/2032955068/2"
+      },
+      "supergroup_forum": {
+        "group_id": -1002435146176,
+        "group_name": "Test group (With Topic) - (topics on; General = topic 1)",
+        "link": "https://t.me/c/2435146176/1/3"
+      }
+    },
     "zone": "TRG01",
     "_master": "bot/TESTING-ROBOT-@justfortesting_tgbot/testing-ground/ground.json (this section mirrors it)"
   },

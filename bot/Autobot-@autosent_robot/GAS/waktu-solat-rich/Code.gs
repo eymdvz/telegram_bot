@@ -46,21 +46,22 @@ function reminder(col, name) {
 }
 
 // Helper Functions (col is legacy/unused — 0 for new rows)
+// NOTE: trigger names are Malay; prayer keys stay API-form (reminder's 2nd arg).
 function imsak()    { return reminder(0, 'imsak');    }
-function fajr()    { return reminder(2, 'fajr');    }
+function subuh()    { return reminder(2, 'fajr');    }
 function dhuha()    { return reminder(0, 'dhuha');    }
 function syuruk()   { return reminder(0, 'syuruk');   } // manual only — no auto trigger
 
 // 10-min heads-up (light notice, no card edit, no quote)
 // Mornings excluded: preFajr ≈ imsak time (noise), preDhuha unneeded.
-function preDhuhr()   { return SolatRich.pre(CONFIG, 'dhuhr');   }
-function preAsr()     { return SolatRich.pre(CONFIG, 'asr');     }
+function preZohor()   { return SolatRich.pre(CONFIG, 'dhuhr');   }
+function preAsar()     { return SolatRich.pre(CONFIG, 'asr');     }
 function preMaghrib() { return SolatRich.pre(CONFIG, 'maghrib'); }
-function preIsha()    { return SolatRich.pre(CONFIG, 'isha');    }
-function dhuhr()   { return reminder(3, 'dhuhr');   }
-function asr()     { return reminder(4, 'asr');     }
+function preIsyak()    { return SolatRich.pre(CONFIG, 'isha');    }
+function zohor()   { return reminder(3, 'dhuhr');   }
+function asar()     { return reminder(4, 'asr');     }
 function maghrib() { return reminder(5, 'maghrib'); }
-function isha()    { return reminder(6, 'isha');    }
+function isyak()    { return reminder(6, 'isha');    }
 
 // Wipe today's state + delete today's test posts (re-run clean).
 function resetToday() {

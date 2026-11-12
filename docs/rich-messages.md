@@ -67,6 +67,9 @@ RichText inline: `{type:"bold", text}` works (cell/title). Rest via html shortha
 - Mobile renders tables flat (no stripes) with wallpaper showing through; desktop shows stripes.
 - Wide 6-col tables need sideways scroll on mobile, clip/wrap on desktop — short names mitigate.
 - `?keep=1` probe messages must be hand-deleted in the topic.
+- Collage grids only when ALL tiles are square; mixed rectangle/video stacks (client layout, verified 11 Nov 2026 via H07 square+square).
+- Expandable blockquote needs ~10+ lines to collapse; short ones render open (threshold, verified 11 Nov 2026 via H04 12-line).
+- Ephemeral: mobile renders in-topic, desktop pins to General (verified 11 Nov 2026; reply anchor doesn't fix desktop — mobile is reference).
 
 ## Received-side shapes (All Types Demo dump, msg 76, 01 Nov 2026)
 

@@ -82,18 +82,20 @@ async function fetchDayTimes() {
 // Rich day card (shape proven by /message1 in bot/ask_the_robot).
 // current = prayer key to bold, or null.
 export function buildBlocks(today, current = null) {
-  const headCell = (t) => ({ text: t, is_header: true, align: 'left', valign: 'top' });
-  const cell = (t, bold) => bold
-    ? { text: { type: 'bold', text: t }, align: 'left', valign: 'top' }
-    : { text: t, align: 'left', valign: 'top' };
+  const nameCell = (t) => ({ text: t, align: 'right', valign: 'top' });
+  const timeCell = (t) => ({ text: t, align: 'left', valign: 'top' });
+  const hotName = (t) => ({ text: t, is_header: true, align: 'right', valign: 'top' });
+  const hotTime = (t) => ({ text: t, is_header: true, align: 'left', valign: 'top' });
   const rows = PRAYERS.map((p) => {
-    const bold = p.key === current;
-    return [cell(`${p.emoji} ${p.name}`, bold), cell(fmtTime(today.times[p.key]), bold)];
+    const hot = p.key === current;
+    return hot
+      ? [hotName(`${p.emoji} ${p.name}`), hotTime(fmtTime(today.times[p.key]))]
+      : [nameCell(`${p.emoji} ${p.name}`), timeCell(fmtTime(today.times[p.key]))];
   });
   const blocks = [
     { type: 'paragraph', text: `${HEADER_TITLE}\n${HEADER_PLACE}\n\n${today.dates}\n${today.hijri}` },
     { type: 'divider' },
-    { type: 'blockquote', blocks: [{ type: 'table', is_bordered: true, caption: ZONE_CAPTION, cells: [[headCell('Solat'), headCell('Waktu')], ...rows] }] },
+    { type: 'table', is_bordered: false, is_compact: true, caption: ZONE_CAPTION, cells: [...rows] },
     { type: 'paragraph', text: [{ type: 'hashtag', text: `#${FOOTER_TAG}`, hashtag: FOOTER_TAG }, `\nby @${FOOTER_BY}`] },
     { type: 'buttons', align: 'center', buttons: [{ text: `Waktu Solat ${ZONE}`, url: `https://dev.mamtj6.com/waktu-solat?location=${ZONE}`, style: 'success' }] },
   ];
@@ -103,10 +105,10 @@ export function buildBlocks(today, current = null) {
 }
 
 // Post today's rich card to the test channel. Upserts prayer_days.
-export async function postDaily() {
+export async function postDaily(currentKey = null) {
   const key = dayKey();
   const today = await fetchDayTimes();
-  const { blocks, fallback } = buildBlocks(today);
+  const { blocks, fallback } = buildBlocks(today, currentKey);
   let mainMsgId;
   let rich = true;
   try {

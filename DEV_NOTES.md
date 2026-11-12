@@ -1,6 +1,58 @@
 # DEV_NOTES — telegram_bot
 
-Latest: Checkpoint 14 — 11 Nov 2026.
+Latest: Checkpoint 17 — 12 Nov 2026.
+
+## Checkpoint 17 — 12 Nov 2026 (DM full loop + live solat cutover proven)
+
+Headspace: breakthrough day. Morning was rule-hunting (mouse-follow user pasting docs, me fetching), afternoon was build-and-verify sprints with screenshots as verdicts. Two "impossible" things fell: DM outbound (wrong id + missing param, both ours) and DM inbound (was arriving all along, handler dropped it). Evening: live solat survived its first overnight on the new code. Next-you: tree is big and entirely uncommitted — commit is the obvious next ask.
+
+What shipped (ALL UNCOMMITTED — origin still `582a239`; trial pushes live on `app9294438713`, confession on its saved login):
+- DM breakthrough: real monoforum id `-2071267775431` (was `-107…`), `direct_messages_topic_id` on every DM send; plain `message` updates carry guests (guest_message never fires for us); monoforum carve-out before admin gate in `message.js`; receipt→819 dropped per-message (tap-only now).
+- DM kit: redirect card (header `ᴮᴼᵀ ᴬᵁᵀᴼᴹᴬᵀᴱᴰ ᴹᴱˢˢᴬᴳᴱ`, Hi {Name}, identity notes, italic EN, Send-to-Bot `?start=confess` + FAQ `t.me/unijaconfession/66437` + Chat Admin buttons), Chat Admin ack + 819 `🙋` note with in-thread jump link, 1h card cooldown (`dm_topics` + migrate), `/dmreply|to|reset`, strip-to-Send+FAQ on tap, offline-hours line 12–7am MYT.
+- `/start confess` in `@Just_arobot`: mirrors `send_conf` tap (guidance + Tutup), pushed.
+- Solat: borderless/`is_header` table + plain-string quotes + Malay triggers (`subuh/zohor/asar/isyak`, `preZohor/preAsar/preIsyak`, `FN` map in `daily()`) in test AND live GAS copies; live pasted + `setup()` + overnight `daily` posted clean (user-verified).
+
+Bugs + lessons:
+81. `t.me/c/` shows the MTProto id — for monoforums add 10¹² (`-207…`), never strip `-100` (`-107…` is fiction). Validate against the bots/ids monoforum range before assuming access errors.
+82. `direct_messages_topic_id` is REQUIRED for DM-topic sends; bare chat_id 400s even with access.
+83. Delivered-but-ignored looks exactly like non-delivery ("0 pending" proves nothing). Check handler early-returns before declaring Telegram silent — our `message.js` dropped every non-`/` text.
+84. `editMessageReplyMarkup` replaces the whole keyboard — re-send surviving buttons, don't send empty unless you mean it.
+85. Deep links should mirror an existing tap destination (`?start=confess` = `send_conf`), send text only, whitelist the param.
+
+Open threads: commit + push (needs explicit ask — tree is 13 modified + 5 untracked); live solat continued watch; `TGCLOUD_TOKEN` Actions secret; retire-or-keep `cronProbeDM.js`/`cronProbeCombo.js`; Feb 2027 Ramadan; suggested-post approve/decline unwired; `?start=confess` new-user lang-picker edge; ephemeral parked; guest flow on other channels.
+
+## Checkpoint 16 — 11 Nov 2026 (Malay trigger names + live restore)
+
+Headspace: short-burst finish loop, user driving renames and catching the stale `pre*` names mid-flight. One real incident: live repo `SolatRich.gs` got overwritten with TEST `Code.gs` content — diagnosed from the `SolatRich is not defined / daily @ SolatRich.gs:40` stack plus a 69-line tail check, fixed by byte-sync. Next-you: test paste + `setup()` is the gate before live paste.
+
+What shipped (ALL UNCOMMITTED — origin still `582a239`): test `Code.gs` + `SolatRich.gs` — `fajr→subuh, dhuhr→zohor, asr→asar, isha→isyak`, `preDhuhr→preZohor, preAsr→preAsar, preIsha→preIsyak`, `daily()` arms via `FN` key→Malay map (main + pre). Live `Code.gs` — same 7 renames, live CONFIG untouched. Live `SolatRich.gs` — synced byte-identical to test (18,106 chars). Table-format port (borderless/`is_header`/plain-string quotes) still in both.
+
+Bugs + lessons:
+79. Paste-target check before running: `SolatRich is not defined` + `daily @ wrongfile` = library file holds entry-point content. Verify head (`var SolatRich = (function`) and tail after every paste. Never paste `Code.gs` into `SolatRich.gs`.
+80. Renaming trigger fns requires the arming side too — `newTrigger(name)` must match a real function. Keep one map (`FN`) feeding both main and pre creation.
+
+Open threads: user pastes both files into GAS test project + runs `setup()` (flush old trigger names), manual `asar()` proof tonight, `daily` 4:45am full-day proof; then same paste + `setup()` in live; commit + push (needs explicit ask); phone alarm instead of bot-DM reminder (no clock here); guest-DM flow still parked.
+
+## Checkpoint 15 — 11 Nov 2026 (probes: blocks/HTML/ephemeral/guest-DM + table restyle)
+
+Headspace: probe-verdict loop, screenshots as truth. User drove short ("ok go"), pasted Bot API ephemeral/guest docs, tested on-device (mobile vs desktop split caught twice). Mood: close things out — park what's unfixable, note what's proven. Next-you: trial app only, nothing here touches live GAS except a 1-line unwrap; commit still needs explicit ask.
+
+What shipped (ALL DEPLOYED-BUT-UNCOMMITTED — origin still `582a239`; trial pushes live on `app9294438713`):
+- Probe registry: `tgcloud/lib/probe.js` (~30 blocks probes, official Bot API names, `#01–#34`), `tgcloud/lib/probehtml.js` (10 HTML groups `#H01–#H10`); `/probetopic [from] [to]`, `/proberichhtml [from] [to]`, `/probelist` (both sets); thread-aware `replyParams` throughout.
+- Prayer table restyle (trial `prayer.js` `buildBlocks`): borderless + headerless + compact, names right/time left, current row via `is_header` highlight (replaces `marked` white-on-white); `postDaily(currentKey)` + `cronDaily` `{ current }` passthrough for highlight previews. GAS `SolatRich.gs`: 1-line unwrap (blockquote around table removed, bordered kept).
+- Ephemeral probe: `/probeephemeral` + `handlers/callback_query.js` (toast diagnostics → tap-gated `ephemeral_message_parameters`, `reply_parameters` anchor attempt, placement note in prompt + whisper).
+- Guest/DM probes: `handlers/guest_message.js` (topic-819 receipt + `answerGuestQuery` echo) + `endpoints/cronProbeDM.js` (direct-write probe → `400 chat not found`).
+- Ground files: root `ground.json` + `testing-ground/ground.json` (channel/discussion links, 3 group types basic/plain/forum, supergroup ids).
+
+Bugs + lessons:
+73. Collage grids only when ALL tiles square; mixed rectangle/video stacks — client layout, not params. Square+square proof pinned in H07 caption.
+74. Expandable blockquote needs ~10+ lines to collapse; 2-line probe renders open (threshold, not broken). H04 now 12 lines.
+75. Ephemeral placement splits by client: mobile respects `message_thread_id`, desktop pins to General. Reply anchor accepted but doesn't fix desktop — mobile is the reference client; note it in the probe text.
+76. file_id is per-bot and untransferable — photo/video probes stay URL-based.
+77. `guest_message` never emitted (0 pending, no error, seconds after guest send) despite webhook `message,callback_query,guest_message` in sync + "Manage direct messages" on. Synthetic handler run clears code (receipt landed). Parked: channel-side bot-attach missing, not fixable from deploys.
+78. Direct send to channel DM chat `-1071267775431` → `400 chat not found`. And "Unija Admin" chat is a human — invisible to the bot; guest test needs a non-admin account via channel profile → Message button.
+
+Open threads: commit + push (needs explicit ask); port trial table restyle into GAS fully if user approves (only unwrap done); retire-or-keep `cronProbeCombo.js` + `cronProbeDM.js`; live watch one full prayer cycle; `TGCLOUD_TOKEN` Actions secret; Feb 2027 Ramadan auto-fire (keep `testHijri` commented); ephemeral use-cases parked (status receipts, mod output, admin lookups).
 
 ## Checkpoint 14 — 11 Nov 2026 (live cutover prep + root ground.json + Ramadan v2.4)
 

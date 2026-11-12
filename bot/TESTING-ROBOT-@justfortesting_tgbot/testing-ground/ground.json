@@ -1,10 +1,17 @@
 {
     "channel_id": -1001267775431,
     "channel_name": "Test Channel",
+    "channel_link": "https://t.me/c/1267775431",
     "discussion_id": -1004441481560,
     "discussion_name": " Test Channel Chat",
+    "discussion_link": "https://t.me/c/4441481560",
     "group_id": -1002435146176,
     "group_name": "Test group",
+    "groups": {
+        "basic": { "group_id": 0, "group_name": "TBD — basic group (no topics possible)", "link": "TBD — basic groups have no t.me/c link; use invite link" },
+        "supergroup_plain": { "group_id": 0, "group_name": "TBD — supergroup, topics off", "link": "TBD — https://t.me/c/<id-without-100>" },
+        "supergroup_forum": { "group_id": -1002435146176, "group_name": "Test group (topics on; General = topic 1)", "link": "https://t.me/c/2435146176" }
+    },
     "zone": "TRG01",
     "note": "same test env as bot/@Just_arobot tgcloud/lib/config.js. Live (DO NOT POST HERE): channel -1001779734656, group -1002010542998."
 }

@@ -13,3 +13,15 @@ export const prayerDays = table('prayer_days', {
   preJson: text('pre_json', { mode: 'json' }), // { dhuhr: msgId, ... } 10-min heads-ups
   created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 });
+
+// One row per channel-DM topic (topic id = guest user id).
+// Drives the redirect-card cooldown: card re-sends only when expired.
+export const dmTopics = table('dm_topics', {
+  topicId: integer('topic_id').primaryKey(), // guest user id
+  userId: integer('user_id'),
+  wantAdmin: integer('want_admin').notNull().default(0), // tapped 💬 Chat Admin
+  lastCardAt: integer('last_card_at').notNull().default(0), // unix sec
+  lastMsgAt: integer('last_msg_at').notNull().default(0), // unix sec
+  lastMsgId: integer('last_msg_id').notNull().default(0), // bot's latest message in the topic (for links)
+  created: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+});
