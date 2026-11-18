@@ -96,6 +96,12 @@ endpoint-set table — decided at live-promotion time. Never commit tokens.
 
 ## 9. Open items
 
+- Threaded DM topics (tested 18 Nov 2026, parked): open/say/del work in
+  private chats, close/reopen don't (forum-only). Resolve = delete,
+  follow-up = fresh topic. Still untested: `rename` via `editForumTopic`,
+  `ForumTopicCreated` listener as safety net. Probes live: `/threadtest`
+  on both test bots (uncommitted).
+
 - Admin group for test (id?) + admin allowlist.
 - External DB need (v1 platform db likely enough — confirm after flow test).
 - `/broadcast` scope (all users vs open-ticket users) + rate guard.

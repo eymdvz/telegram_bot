@@ -89,7 +89,18 @@ async function handle(message) {
     }
     return;
   }
-  if (!text.startsWith('/')) return;
+  if (!text.startsWith('/')) {
+    // File-id echo: forward any audio/document/voice/video here, get its file_id back.
+    // (One-time setup helper for GAS broadcasts — file_id is per-bot.)
+    const m = message.audio ? ['audio', message.audio] : message.document ? ['document', message.document] : message.voice ? ['voice', message.voice] : message.video ? ['video', message.video] : message.video_note ? ['video_note', message.video_note] : null;
+    if (m) {
+      await api.sendMessage({
+        ...replyParams(message),
+        text: `type: ${m[0]}\nfile_id:\n${m[1].file_id}\nmime: ${m[1].mime_type || '-'}\nsize: ${m[1].file_size || '-'}`,
+      });
+    }
+    return;
+  }
   const chatId = message.chat.id;
   if (!ADMIN_IDS.includes(message.from?.id)) {
     await api.sendMessage({ chat_id: chatId, text: 'Test command — owner only.' });
@@ -175,7 +186,148 @@ async function handle(message) {
     }
     return;
   }
-  if (cmd === '/probelist') {    const lines = PROBES.map((p, i) => `#${String(i + 1).padStart(2, '0')} ${p.official} (${p.name})`);
+  if (cmd === '/threadtest') {
+    // Private-chat topics probe (Threaded Mode must be ON in BotFather).
+    // /threadtest open [name] | say <topicId> <text> | close <topicId> | reopen <topicId> | del <topicId>
+    const rest = text.slice('/threadtest'.length).trim().split(/\s+/).filter(Boolean);
+    const sub = (rest.shift() ?? '').toLowerCase();
+    const usage = 'Usage:\n/threadtest open [name]\n/threadtest say <topicId> <text>\n/threadtest close <topicId>\n/threadtest reopen <topicId>\n/threadtest del <topicId>';
+    try {
+      if (sub === 'open') {
+        const name = rest.join(' ') || 'Test topic';
+        const t = await api.createForumTopic({ chat_id: chatId, name });
+        await api.sendMessage({ ...replyParams(message), text: `Topic opened: id ${t.message_thread_id} ("${t.name}"). Try: /threadtest say ${t.message_thread_id} hello` });
+      } else if (sub === 'say') {
+        const tid = Number(rest.shift());
+        const body = rest.join(' ');
+        if (!tid || !body) throw new Error('usage: /threadtest say <topicId> <text>');
+        const m = await api.sendMessage({ chat_id: chatId, message_thread_id: tid, text: body });
+        await api.sendMessage({ ...replyParams(message), text: `Sent into topic ${tid} (msg ${m.message_id}).` });
+      } else if (sub === 'close' || sub === 'reopen' || sub === 'del') {
+        const tid = Number(rest[0]);
+        if (!tid) throw new Error(`usage: /threadtest ${sub} <topicId>`);
+        if (sub === 'close') await api.closeForumTopic({ chat_id: chatId, message_thread_id: tid });
+        if (sub === 'reopen') await api.reopenForumTopic({ chat_id: chatId, message_thread_id: tid });
+        if (sub === 'del') await api.deleteForumTopic({ chat_id: chatId, message_thread_id: tid });
+        await api.sendMessage({ ...replyParams(message), text: `Topic ${tid}: ${sub} ok.` });
+      } else {
+        await api.sendMessage({ ...replyParams(message), text: usage });
+      }
+    } catch (e) {
+      await api.sendMessage({ ...replyParams(message), text: `threadtest FAILED: ${(e?.description || e?.message || e)}`.slice(0, 400) });
+    }
+    return;
+  }
+  if (cmd === '/probe') {
+    await api.sendMessage({
+      ...replyParams(message),
+      text: `Probe commands (owner only):\n/probetopic [from] [to] — rich blocks catalog (${PROBES.length} shapes, official Bot API names)\n/proberichhtml [from] [to] — rich HTML catalog (${PROBEHTML.length} groups, #H01–#H10)\n/probelist — list all catalog shapes\n/specialprobe <iklanniaga|mulk|mulkrich|zohorjumaat|zohorpre|zohormasuk> — one-off specials\n/probeephemeral — ephemeral reply probe\n/dmreply <userId> <text> — write into a DM topic\n/dmreplyto <userId> <msgId> <text> — quoted reply into a DM topic\n/dmreset <userId> — clear DM card cooldown\n/solat_today|tick|status — prayer trial`,
+    });
+    return;
+  }
+  if (cmd === '/specialprobe') {
+    const sub = (text.split(/\s+/)[1] || 'iklan').toLowerCase();
+    if (sub === 'mulkrich') {
+      try {
+        const r = await api.sendRichMessage({
+          ...replyParams(message),
+          rich_message: { blocks: [
+            { type: 'paragraph', text: { type: 'bold', text: 'Daily Al-Mulk Reminder' } },
+            { type: 'photo', photo: { type: 'photo', media: 'https://telegra.ph/file/ac93ddd660204b4372274.png' } },
+            { type: 'paragraph', text: '✨ Jangan lupa baca surah Al-Mulk setiap malam untuk keberkatan! ✨\nMalas nak baca? nak dengar sebelum tidur pun boleh\nTak dapat buat semua, jangan tinggal semua' },
+            { type: 'audio', audio: { type: 'audio', media: 'CQACAgUAAxkBAAMUavVnY9dJI-5Zskop4JhOg7xlk9wAAiMgAALUtalXBMoWnVEQGm09BA', title: 'Bacaan Al-Mulk' } },
+            { type: 'paragraph', text: '🎧 Audio Al-Mulk, jom dengar sebelum tidur.' },
+          ] },
+        });
+        await api.sendMessage({ ...replyParams(message), text: `✅ specialprobe mulkrich posted: msg ${r.message_id}` });
+      } catch (e) {
+        await api.sendMessage({ ...replyParams(message), text: `❌ specialprobe mulkrich: ${e?.description ?? e?.message ?? e}`.slice(0, 400) });
+      }
+      return;
+    }
+    if (sub === 'zohorjumaat') {
+      try {
+        const r = await api.sendRichMessage({
+          ...replyParams(message),
+          rich_message: { blocks: [
+            { type: 'paragraph', text: '⏰ Menghampiri Waktu Solat Jumaat (Zohor) {time}' },
+            { type: 'paragraph', text: 'Kaum Adam, moh gi sejid awal' },
+            { type: 'pullquote', text: 'Sesiapa yang mandi pada hari Jumaat (seperti) mandi janabah lalu segera pergi ke masjid, maka seakan-akan berkorban dengan unta, sesiapa yang pergi pada masa yang kedua, maka seakan-akan dia berkorban dengan lembu, dan sesiapa pergi pada masa yang ketiga, maka seakan-akan dia berkorban dengan biri-biri jantan yang bertanduk, dan sesiapa yang pergi pada masa yang keempat seakan-akan dia berkorban dengan seekor ayam, dan sesiapa yang pergi pada masa kelima, maka seakan-akan dia berkorban dengan sebiji telur dan apabila imam telah keluar (untuk berkhutbah) maka para malaikat turut hadir untuk mendengar peringatan (khutbah).', credit: 'Hadis yang diriwayatkan oleh Abu Hurairah RA [Riwayat al-Bukhari (881) dan Muslim (850)]' },
+          ] },
+        });
+        await api.sendMessage({ ...replyParams(message), text: `✅ specialprobe zohorjumaat posted: msg ${r.message_id}` });
+      } catch (e) {
+        await api.sendMessage({ ...replyParams(message), text: `❌ specialprobe zohorjumaat: ${e?.description ?? e?.message ?? e}`.slice(0, 400) });
+      }
+      return;
+    }
+    if (sub === 'zohorpre') {
+      try {
+        const r = await api.sendRichMessage({
+          ...replyParams(message),
+          rich_message: { blocks: [
+            { type: 'paragraph', text: '⏰ Menghampiri Waktu Solat Jumaat (Zohor) 01:05 PM' },
+            { type: 'paragraph', text: 'Kaum Adam, moh gi sejid awal' },
+            { type: 'pullquote', text: 'Sesiapa yang mandi pada hari Jumaat (seperti) mandi janabah lalu segera pergi ke masjid, maka seakan-akan berkorban dengan unta, sesiapa yang pergi pada masa yang kedua, maka seakan-akan dia berkorban dengan lembu, dan sesiapa pergi pada masa yang ketiga, maka seakan-akan dia berkorban dengan biri-biri jantan yang bertanduk, dan sesiapa yang pergi pada masa yang keempat seakan-akan dia berkorban dengan seekor ayam, dan sesiapa yang pergi pada masa kelima, maka seakan-akan dia berkorban dengan sebiji telur dan apabila imam telah keluar (untuk berkhutbah) maka para malaikat turut hadir untuk mendengar peringatan (khutbah).', credit: 'Hadis yang diriwayatkan oleh Abu Hurairah RA [Riwayat al-Bukhari (881) dan Muslim (850)]' },
+          ] },
+        });
+        await api.sendMessage({ ...replyParams(message), text: `✅ specialprobe zohorpre posted: msg ${r.message_id} (time is placeholder)` });
+      } catch (e) {
+        await api.sendMessage({ ...replyParams(message), text: `❌ specialprobe zohorpre: ${e?.description ?? e?.message ?? e}`.slice(0, 400) });
+      }
+      return;
+    }
+    if (sub === 'zohormasuk') {
+      try {
+        const r = await api.sendRichMessage({
+          ...replyParams(message),
+          rich_message: { blocks: [
+            { type: 'paragraph', text: ['🕌 Waktu Solat ', { type: 'bold', text: 'Jumaat (Zohor)! 🌞' }, '\n01:05 PM'] },
+            { type: 'paragraph', text: 'Yang lelaki, jom pergi masjid, dengor Khutbah Jumaat.\nMoh belaka solat awal!' },
+            { type: 'buttons', align: 'center', buttons: [{ text: '🌐 Waktu Solat TRG01', url: 'https://dev.mamtj6.com/waktu-solat?location=TRG01', style: 'success' }] },
+          ] },
+          reply_markup: { inline_keyboard: [[{ text: 'Asar 🔜 04:35 PM', url: 'https://t.me/c/1267775431/1' }]] },
+        });
+        await api.sendMessage({ ...replyParams(message), text: `✅ specialprobe zohormasuk posted: msg ${r.message_id} (time is placeholder)` });
+      } catch (e) {
+        await api.sendMessage({ ...replyParams(message), text: `❌ specialprobe zohormasuk: ${e?.description ?? e?.message ?? e}`.slice(0, 400) });
+      }
+      return;
+    }
+    if (sub === 'mulk') {
+      try {
+        const p = await api.sendPhoto({
+          ...replyParams(message),
+          photo: 'https://telegra.ph/file/ac93ddd660204b4372274.png',
+          caption: '✨ Jangan lupa baca surah Al-Mulk setiap malam untuk keberkatan! ✨\nMalas nak baca? nak dengar sebelum tidur pun boleh\nTak dapat buat semua, jangan tinggal semua',
+        });
+        const a = await api.sendAudio({
+          ...replyParams(message),
+          audio: 'CQACAgUAAxkBAAMUavVnY9dJI-5Zskop4JhOg7xlk9wAAiMgAALUtalXBMoWnVEQGm09BA',
+          caption: '🎧 Audio Al-Mulk, jom dengar sebelum tidur.',
+          title: 'Bacaan Al-Mulk',
+        });
+        await api.sendMessage({ ...replyParams(message), text: `✅ specialprobe mulk posted: photo ${p.message_id} + audio ${a.message_id}` });
+      } catch (e) {
+        await api.sendMessage({ ...replyParams(message), text: `❌ specialprobe mulk: ${e?.description ?? e?.message ?? e}`.slice(0, 400) });
+      }
+      return;
+    }
+    if (sub === 'iklanniaga') {
+    const html = `<p><b>Iklan Niaga/Sewa</b></p><figure><img src="https://telegra.ph/file/6ed5935972e53a04190a2.png"/><figcaption>Iklan niaga/iklan sewa tidak akan di post dalam channel ini.<br/>(rujuk <a href="https://t.me/unijaconfession/61294">Larangan Iklan Niaga</a> / <a href="https://t.me/unijaconfession/68591">larangan iklan sewa</a>).</figcaption></figure><details><summary>Apa itu iklan niaga?</summary><ul><li>Promote link shoppe dan apa jua affiliate</li><li>referral link (Temu, dll)</li><li>Letgo apa jua jenis barangan</li><li>letgo/jual tiket bas</li><li>Sebarang link/pautan kepada group niaga (kecuali yang dibenarkan)</li><li>Apa jua jenis servis (grab, delivery, runner, dan sebagainya)</li></ul></details><details><summary>Apa itu iklan sewa?</summary><ul><li>Kekosongan bilik/rumah &amp; mencari pengganti penyewa</li><li>Promote rumah/bilik sewa (oleh owner/ejen)</li><li>Mencari rumah/bilik sewa (oleh penyewa)</li></ul></details><p><br/></p><tg-button-row align="center"><tg-button type="url" style="success" url="https://t.me/c/4441481560">📝 Iklan Niaga</tg-button></tg-button-row><p>📝 Iklan Niaga: untuk urusan hantar &amp; lihat iklan niaga</p><tg-button-row align="center"><tg-button type="url" url="https://t.me/iklansewa_unisza">🏘️ @iklansewa_unisza</tg-button></tg-button-row><p>🏘️ @\u200Biklansewa_unisza: urusan rumah sewa (iklan, mencari replacement)</p>`;
+    try {
+      await api.sendRichMessage({ ...replyParams(message), rich_message: { html } });
+      await api.sendMessage({ ...replyParams(message), text: '✅ specialprobe: iklan card posted' });
+    } catch (e) {
+      await api.sendMessage({ ...replyParams(message), text: `❌ specialprobe: ${e?.description ?? e?.message ?? e}`.slice(0, 400) });
+    }
+    return;
+    }
+    await api.sendMessage({ ...replyParams(message), text: 'Usage: /specialprobe <iklanniaga|mulk|mulkrich|zohorjumaat|zohorpre|zohormasuk>' });
+    return;
+  }
+  if (cmd === '/probelist') {
+    const lines = PROBES.map((p, i) => `#${String(i + 1).padStart(2, '0')} ${p.official} (${p.name})`);
     const hlines = PROBEHTML.map((p, i) => `#H${String(i + 1).padStart(2, '0')} ${p.official} (${p.name})`);
     await api.sendMessage({ ...replyParams(message), text: (`Rich blocks (${PROBES.length}):\n` + lines.join('\n') + `\n\nRich HTML (${PROBEHTML.length}):\n` + hlines.join('\n')).slice(0, 4000) });
     return;

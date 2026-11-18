@@ -1,6 +1,121 @@
 # DEV_NOTES — telegram_bot
 
-Latest: Checkpoint 17 — 12 Nov 2026.
+Latest: Checkpoint 21 — 18 Nov 2026 (wrap-up).
+
+## Checkpoint 21 — 18 Nov 2026 (wrap-up: commit + push session work)
+
+Headspace: end of a long multi-repo session. Skills cleanup already pushed
+earlier today; this window was all telegram_bot — thread-test probes, live
+verdicts, park-as-knowledge, now wrap-up on explicit "commit and push".
+Next-you: tree below is intentionally partial — only session files committed,
+other people's dirt left untouched (listed, not swept in).
+
+What shipped (this commit):
+- `bot/@Just_arobot/tgcloud/handlers/message.js` — owner-only `/threadtest`
+  (open/say/close/reopen/del), pushed live to app1232472975.
+- `bot/TESTING-ROBOT-@justfortesting_tgbot/tgcloud-serverless/tgcloud/handlers/message.js`
+  — same probe adapted to that bot's style, pushed live to app9294438713
+  via `TGCLOUD_TOKEN` env (token cleared from session after).
+- `bot/@Just_arobot/plan.md §9` — parked threaded-topics line.
+- `DEV_NOTES.md` — Checkpoint 20 (thread verdicts) + this checkpoint.
+- Live proof: topic 398119 opened/said/deleted on `@justfortesting_tgbot`;
+  close/reopen fail forum-only (expected). Webhooks in sync, pending 0.
+- Earlier today (other repos, already pushed): agents_skills slim to
+  `session-handoff` only (`b6d929f`), haji `opencode.json` (`f7c9b34`),
+  marketer skills wiring mixed commit (`bb98404`).
+
+Bugs + lessons:
+98. Wrap-up commits stay scoped: `git add` the 4 session files only — this
+    tree holds other authors' GAS/ground work; never `git add -A` a shared
+    tree on "commit and push" without checking `status` first.
+99. Notion mirror skipped: `eymdvz/telegram_bot` has no Todos pair in the
+    notion-mcp-todolist mapping table (marketer/MAMTJ6/unija only). Pair
+    creation is owner call — parked, not silently created.
+
+Open threads (owners): threaded rename probe + `ForumTopicCreated` listener
++ per-case flow (parked, Checkpoint 20); Notion pair for telegram_bot (owner);
+`/threadtest` changelog entry deferred (test-only probe, no user-visible
+change — owner bumps on next slice); live `@unijaconfession_chatbot`
+promotion still needs serverless access; uncommitted others' work below
+stays theirs: GAS `code.gs`/`script_properties.json`/`SolatRich.gs`,
+root `ground.json`, `OLD/`, `jumaat-reminder/`, `GAS/daily-reminder/`;
+agents_skills (AGENTS/DEV_NOTES/SKILLS-MAP/session-handoff modifications),
+marketer WIP pile, haji `skills/session-handoff` deletion — all untouched.
+
+## Checkpoint 20 — 18 Nov 2026 (threaded DM topics tested, parked)
+
+Headspace: quick verify-then-park loop. User drove with Bot API doc links + a
+BotFather screenshot, then called park. Keep replies terse, never commit unless
+asked.
+
+What shipped (UNCOMMITTED — `bot/@Just_arobot/tgcloud/handlers/message.js`,
+`bot/TESTING-ROBOT-@justfortesting_tgbot/tgcloud-serverless/tgcloud/handlers/message.js`;
+both pushed live to their test bots):
+- Owner-only `/threadtest` probe in both bots (open/say/close/reopen/del,
+  stateless, no schema change). Syntax `node --check` clean on both.
+- Live proof on `@justfortesting_tgbot`: `open` → topic 398119 created,
+  `say` landed inside it, `del` worked. `close`/`reopen` FAILED with
+  "Bad Request: the chat is not a supergroup forum" — forum-only methods.
+- Rule learned: private-topic lifecycle is open → talk → delete. No closed
+  state; follow-ups get a fresh topic (new id). `rename` via `editForumTopic`
+  still untested.
+- Toggles confirmed via user screenshot: Threaded Mode ON + users can't create
+  threads (bot-only creation — matches per-case design).
+- Docs read: `ForumTopicCreated` (confirm + `is_name_implicit` rename flag —
+  only one that matters); `ForumTopicClosed` / `GeneralForumTopicHidden`
+  are group-only, irrelevant to DMs.
+
+Bugs + lessons:
+96. Sandbox folder `tgcloud-serverless/` was NOT linked (rev 73, no bot) despite
+   `.tgcloud/` existing — user pasted the app token, `TGCLOUD_TOKEN` env push
+   worked, token cleared from session after. Never write tokens to files.
+97. `npx --prefix <dir> tgcloud` runs in the wrong cwd — always set workdir to
+   the bot folder instead.
+
+Parked: `ForumTopicCreated` listener as safety net + `rename` probe + per-case
+topics in `@Just_arobot/plan.md §4`. See that plan's §9 open-items line.
+
+## Checkpoint 19 — 14 Nov 2026 (live solat fix + Jumaat Friday gates + live rich port)
+
+Headspace: verification-heavy closeout. Screenshots as verdicts continued (H04/H11 probes, mulk single-message proof, comment-UI A/B). Two "prove it on the box" loops: live Zohor miss → pasted-code forensics → FN-map restore; rich-vs-keyboard comment UI → mulkrich wins. Mood: tidying toward commit, but commit still needs explicit ask.
+
+What shipped (UNCOMMITTED — telegram_bot origin still `3c43fa3`):
+- Live solat rescue: GAS-pasted repo copy had lost the FN map (raw-key triggers vs Malay fns → all renamed prayers dead, dhuha survived). Restored map in live `SolatRich.gs`; user re-pasted + `setup()` + manual `zohor()` green on live.
+- Friday Jumaat: `/specialprobe zohorj markuppre|zohormasuk` probes green; test GAS `pre()` (rich pullquote + plain fallback) and `edits()` (Jumaat head/body) gated on MYT Friday; user-verified wording (`Kaum Adam…`, Khutbah lines).
+- Live daily-reminder port: `sendIklanRich` (blocks + reply_markup, no comment UI), `sendAlMulkRich` (single message, `Bacaan Al-Mulk`), owner-DM alerts, `CHANNEL2` cleanup, audio `PASTE_LIVE_FILE_ID` placeholder (live bot needs own upload + getUpdates).
+- `/probe` menu + `/specialprobe` now explicit-subcommand-only (no silent iklan default); usage line on mismatch.
+- `jumaat-reminder/plan.md` (new), `ground.json` users, `OLD/` backup (owner-made).
+
+Bugs + lessons:
+92. Pasted-code drift: GAS→repo paste overwrote the fixed file with the stale GAS version. After any paste, grep the load-bearing lines (`FN\[`, `newTrigger(fn`) before trusting the tree.
+93. `editMessageReplyMarkup` replaces the whole keyboard — re-send survivors, and verify byte-level (`U+200B` vs `U+2060` both invisible, only one kills mentions).
+94. Reply_markup keyboards don't raise the discussion comment UI; rich button blocks do. Probe the shape, don't assume.
+95. `title` on file_id resends is ignored — identity is baked at upload; retag + re-upload + new file_id.
+
+Open threads: commit (explicit ask); live `audioFileId` via getUpdates; live GAS re-paste (Jumaat gates are test-only); live rich iklan/mulk debut; `?start=confess` lang-picker edge; channel counter parked; widgets parked (prod = DM-only); suggested-post flow unexplored.
+
+
+## Checkpoint 18 — 12 Nov 2026 (DM kit done + daily-reminder rich iklan/mulk + token scare)
+
+Headspace: long build day, screenshots as verdicts throughout. Arc: DM autopilot finished (cooldown, header, jump-links, FAQ/deep-link buttons), then a detour into GAS daily-reminder that turned into its own project (test copy, failure alerts, rich iklan with collapsibles, Al-Mulk single-message audio card), plus one security scare (live token in repo — revoked, scrubbed). Next-you: uncommitted pile is large again; commit needs explicit ask.
+
+What shipped (UNCOMMITTED — origin still `3c43fa3`; trial pushes live on `app9294438713`, confession saved-login still good):
+- DM: card cooldown (`dm_topics` + migrate + `/dmreset`), superscript header, stripped-to-Send+FAQ on tap, 819 `🙋` note with in-thread jump link + `by user` line, FAQ URL button, `?start=confess` deep link, offline-hours ack, `/probe` menu, `/specialprobe` (+`mulk`/`mulkrich`).
+- `@Just_arobot`: `/start confess` mirrors `send_conf` tap (pushed).
+- Test daily-reminder copy (new folder): failure alerts to owner DM, hardwired test targets, `sendIklanRich` rich card (rule caption, 2 collapsibles, buttons via reply_markup — no comment UI), `sendAlMulkRich` single message (title/photo/caption/audio `Bacaan Al-Mulk`), `richIklanButton` manual probe fn, test script_properties.
+- `ground.json`: `users` (owner/co-owner).
+- Live daily-reminder: revoked token scrubbed from `code.gs:4`, json trimmed to runtime truth.
+- `jumaat-reminder/plan.md`: fix+improve plan (alerts, HTML, test path, random-masjid button, rotation).
+
+Bugs + lessons:
+86. `/start` deep links should mirror an existing button tap, not invent a landing (confess → send_conf guidance).
+87. `file_id` resends ignore `title` — the displayed name is baked at upload. Retag (ffmpeg `-metadata title=`) + re-upload + new id; per-bot ids as ever.
+88. Reply_markup keyboards vs rich button blocks render differently on discussion UI (former: clean; latter: comment bar). Post shape is load-bearing — probe, don't assume.
+89. Invisible chars (ZWSP) must be source escapes (`\u200B`) + byte-verified (`U+200B`) — editors silently swap them (caught U+2060 twice).
+90. `node --check` can't parse `.gs` — copy to `.mjs` first (same ritual as tgcloud handlers).
+91. Tokens in repo: revoke first (BotFather), scrub second, never rewrite history for a dead secret (re-clone cost, zero regained security).
+
+Open threads: commit (explicit ask); GAS test re-paste (daily-reminder rich iklan + mulk); port rich iklan + Al-Mulk to live; `?start=confess` lang-picker edge; jumaat batches; channel counter parked; widgets parked (DM-only in prod); FAQ keyword engine parked; suggested-post flow unexplored.
 
 ## Checkpoint 17 — 12 Nov 2026 (DM full loop + live solat cutover proven)
 

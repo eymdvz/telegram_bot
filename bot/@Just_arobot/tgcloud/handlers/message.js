@@ -2170,6 +2170,45 @@ async function handle(msg) {
     return;
   }
 
+  // Private-chat topics probe (owner only). Needs Topics enabled via BotFather
+  // or createForumTopic fails — that failure IS the test result.
+  // /threadtest open [name] | say <topicId> <text> | close <topicId> |
+  // reopen <topicId> | del <topicId>
+  if (text.startsWith('/threadtest')) {
+    if (msg.from.id !== SUPER_ADMIN_ID) {
+      await api.sendMessage({ chat_id: chatId, text: 'Not allowed.' });
+      return;
+    }
+    const args = text.slice(11).trim().split(/\s+/).filter(Boolean);
+    const sub = (args.shift() ?? '').toLowerCase();
+    const usage = '/threadtest open [name] | say <topicId> <text> | close <topicId> | reopen <topicId> | del <topicId>';
+    try {
+      if (sub === 'open') {
+        const name = args.join(' ') || 'Test topic';
+        const t = await api.createForumTopic({ chat_id: chatId, name });
+        await api.sendMessage({ chat_id: chatId, text: `Topic opened: id ${t.message_thread_id} ("${t.name}"). Try: /threadtest say ${t.message_thread_id} hello` });
+      } else if (sub === 'say') {
+        const tid = Number(args.shift());
+        const body = args.join(' ');
+        if (!tid || !body) throw new Error('usage: /threadtest say <topicId> <text>');
+        const m = await api.sendMessage({ chat_id: chatId, message_thread_id: tid, text: body });
+        await api.sendMessage({ chat_id: chatId, text: `Sent into topic ${tid} (msg ${m.message_id}).` });
+      } else if (sub === 'close' || sub === 'reopen' || sub === 'del') {
+        const tid = Number(args[0]);
+        if (!tid) throw new Error(`usage: /threadtest ${sub} <topicId>`);
+        if (sub === 'close') await api.closeForumTopic({ chat_id: chatId, message_thread_id: tid });
+        if (sub === 'reopen') await api.reopenForumTopic({ chat_id: chatId, message_thread_id: tid });
+        if (sub === 'del') await api.deleteForumTopic({ chat_id: chatId, message_thread_id: tid });
+        await api.sendMessage({ chat_id: chatId, text: `Topic ${tid}: ${sub} ok.` });
+      } else {
+        await api.sendMessage({ chat_id: chatId, text: usage });
+      }
+    } catch (e) {
+      await api.sendMessage({ chat_id: chatId, text: `threadtest FAILED: ${String(e?.description ?? e?.message ?? e).slice(0, 400)}` });
+    }
+    return;
+  }
+
   if (text.startsWith('/start')) {
     const u = await ensureUser(msg);
     if (!u) return;
