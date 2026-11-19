@@ -1,6 +1,23 @@
 # DEV_NOTES — telegram_bot
 
-Latest: Checkpoint 21 — 18 Nov 2026 (wrap-up).
+Latest: Checkpoint 22 — 19 Nov 2026 (daily-reminder live + solat Jumaat merge).
+
+## Checkpoint 22 — 19 Nov 2026 (daily-reminder live + solat Jumaat merge)
+
+Headspace: port-then-prove evening. Daily-reminder went from "ported except audio" to fully live; solat Jumaat gates crossed test→live as a clean 3-block merge. getUpdates archaeology (offset=-1 vs backlog) was the one real puzzle.
+
+What shipped (UNCOMMITTED — origin still `4a93d5c`):
+- Live daily-reminder `code.gs`: `chatId` ReferenceError fix (every run was throwing into catch), `allow_sending_without_reply`, `richIklanButton()` probe ported, Al-Mulk `title` dropped (per-95), real live `audioFileId` (`Bacaan Al-Mulk .m4a`, 532s, seeded via @autosent_robot DM + `getUpdates?offset=-1`), `OWNER_DM` in script_properties template. Pasted to live GAS, `setup()` + `alMulk()` + `richIklanButton()` all green.
+- Live `SolatRich.gs`: Jumaat merge (constants + `isFriday`, on-time head/body swap in `edits()`, rich pre-card + pull quote in `pre()`), header comment fixed TEST→LIVE. Diff vs test = header line only. Pasted; `probeJumaat()` render green. Real proof = Friday Zohor.
+- Pre-existing dirt untouched: test `SolatRich.gs` Jumaat blocks, `ground.json` users, `jumaat-reminder/`, `OLD/`, test daily-reminder folder.
+
+Bugs + lessons:
+96. `getUpdates` returns oldest-first — a DM buried past the visible page looks "missing". `offset=-1&limit=1` shows the latest update id; if it hasn't moved past your send, the message never arrived (wrong bot/token), else fetch `limit=100` and Ctrl+F.
+97. File-id echo only helps within the same bot — test-bot `file_id` won't play on the live bot. Seed live `file_id` via the live bot's own DM.
+98. Probe temp functions must not write state: a forced Jumaat `pre` would set `PRE.dhuhr` and make Friday's real pre skip itself. Render-only probes (post + delete) for gated paths.
+99. Live GAS `code.gs` vs `SolatRich.gs` paste separately — triggers bind to `Code.gs` entry points, so a `SolatRich.gs`-only paste needs no `setup()` re-run.
+
+Open threads: Friday Zohor Jumaat watch (pre-card + on-time head); commit (explicit ask).
 
 ## Checkpoint 21 — 18 Nov 2026 (wrap-up: commit + push session work)
 

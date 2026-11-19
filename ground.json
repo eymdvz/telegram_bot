@@ -34,5 +34,9 @@
     "group_id": -1003996987649,
     "group_note": "per Checkpoint 11 (upgraded supergroup id) — verify via @userinfobot before wiring anything to it",
     "zone": "TRG01"
+  },
+  "users": {
+    "owner": { "id": 230757915, "username": "eym_dvz" },
+    "co_owner": { "id": 7154716451, "username": "Unija_minmin" }
   }
 }

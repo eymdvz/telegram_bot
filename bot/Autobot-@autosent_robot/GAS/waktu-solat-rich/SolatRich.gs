@@ -1,4 +1,4 @@
-// SolatRich.gs — rich-card port of v2.gs for the TEST project.
+// SolatRich.gs — rich-card port of v2.gs for the LIVE project (@autosent_robot).
 // State in PropertiesService (no Sheets here).
 // Verified shapes (tgcloud trial, msg 376+): sendRichMessage blocks,
 // quote_rich_texts with the two table cells. Rich edit is UNVERIFIED —
@@ -23,6 +23,15 @@ var SolatRich = (function () {
   function fmtTime(unixSec) {
     return Utilities.formatDate(new Date(unixSec * 1000), TZ, 'hh:mm a');
   }
+
+  // Friday Jumaat specials (MYT weekday 5 = Friday).
+  function isFriday(d) { return Utilities.formatDate(d || new Date(), TZ, 'u') === '5'; }
+  var JUMAAT_PRE_HEAD = '⏰ Menghampiri Waktu Solat Jumaat (Zohor)';
+  var JUMAAT_PRE_BODY = 'Kaum Adam, moh gi sejid awal';
+  var JUMAAT_QUOTE = 'Sesiapa yang mandi pada hari Jumaat (seperti) mandi janabah lalu segera pergi ke masjid, maka seakan-akan berkorban dengan unta, sesiapa yang pergi pada masa yang kedua, maka seakan-akan dia berkorban dengan lembu, dan sesiapa pergi pada masa yang ketiga, maka seakan-akan dia berkorban dengan biri-biri jantan yang bertanduk, dan sesiapa yang pergi pada masa yang keempat seakan-akan dia berkorban dengan seekor ayam, dan sesiapa yang pergi pada masa kelima, maka seakan-akan dia berkorban dengan sebiji telur dan apabila imam telah keluar (untuk berkhutbah) maka para malaikat turut hadir untuk mendengar peringatan (khutbah).';
+  var JUMAAT_CREDIT = 'Hadis yang diriwayatkan oleh Abu Hurairah RA [Riwayat al-Bukhari (881) dan Muslim (850)]';
+  var JUMAAT_HEAD = '🕌 Waktu Solat Jumaat (Zohor)! 🌞';
+  var JUMAAT_BODY = 'Yang lelaki, jom pergi masjid, dengor Khutbah Jumaat.\nMoh belaka solat awal!';
 
   function callTelegram(method, payload) {
     var url = 'https://api.telegram.org/bot' + token() + '/' + method;
@@ -240,7 +249,11 @@ var SolatRich = (function () {
       // 2) Reminder reply with real rich quote (verified in tgcloud trial).
       // Card row is now is_header (plain text) — quote stays plain strings
       // to mirror the card (API: "rich texts must be nested in the same way").
-      var rb = reminderBlocks(cfg, p, time, nextTxt, mainId, ramadanLine(cfg, today, load(stateKey(cfg, 'DAY')), current));
+      // Friday Jumaat special: Jumaat head/body for the dhuhr on-time reminder.
+      var rp = {};
+      for (var rk in p) rp[rk] = p[rk];
+      if (current === 'dhuhr' && isFriday()) { rp.head = JUMAAT_HEAD; rp.body = JUMAAT_BODY; }
+      var rb = reminderBlocks(cfg, rp, time, nextTxt, mainId, ramadanLine(cfg, today, load(stateKey(cfg, 'DAY')), current));
       var replyParams = {
         message_id: mainId,
         allow_sending_without_reply: true,
@@ -303,6 +316,27 @@ var SolatRich = (function () {
       for (var k = idx - 1; k >= 0; k--) { if (!list[k].noTick) { prev = list[k]; break; } }
       var tpl = p.pre || ('⏰ Menghampiri Waktu ' + p.name + ' {time}' + (prev ? ' (Waktu ' + prev.name + ' berbaki 10 minit lagi).' : '.'));
       var time = fmtTime(today.times[current]);
+      // Friday Jumaat special: rich card + pull quote, plain fallback.
+      if (current === 'dhuhr' && isFriday()) {
+        var jb = [
+          { type: 'paragraph', text: JUMAAT_PRE_HEAD + ' ' + time },
+          { type: 'paragraph', text: JUMAAT_PRE_BODY },
+          { type: 'pullquote', text: JUMAAT_QUOTE, credit: JUMAAT_CREDIT }
+        ];
+        var jr = callTelegram('sendRichMessage', {
+          chat_id: cfg.channelId,
+          rich_message: JSON.stringify({ blocks: jb }),
+          reply_parameters: JSON.stringify({ message_id: mainId, allow_sending_without_reply: true })
+        });
+        if (jr.ok) {
+          pres[current] = jr.result.message_id;
+          save(stateKey(cfg, 'PRE'), JSON.stringify(pres));
+          Logger.log('jumaat rich pre posted ' + jr.result.message_id);
+          return jr.result.message_id;
+        }
+        Logger.log('jumaat rich pre failed (' + JSON.stringify(jr) + ') — falling back to text');
+        tpl = JUMAAT_PRE_HEAD + ' {time}\n' + JUMAAT_PRE_BODY + '\n"' + JUMAAT_QUOTE + '" — ' + JUMAAT_CREDIT;
+      }
       var r = callTelegram('sendMessage', {
         chat_id: cfg.channelId,
         text: tpl.split('{time}').join(time),
